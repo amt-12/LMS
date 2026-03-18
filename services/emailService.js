@@ -56,6 +56,28 @@ async function sendWelcomeEmail(to, name, action = 'Welcome') {
   });
 }
 
+// Student welcome email
+async function sendStudentWelcomeEmail(to, name, tempPassword, appLink, dashboardLink) {
+  const subject = 'Welcome to Abhishek\'s Academy LMS!';
+  const message = `
+    <p>Congratulations! Your account has been created by admin.</p>
+    <h3>Your Temporary Login Details:</h3>
+    <p><strong>Email:</strong> ${to}</p>
+    <p><strong>Password:</strong> <span style="font-size:18px; color:#13294B;">${tempPassword}</span> (Change after login)</p>
+    <br>
+    <h3 style="color:#13294B;">Get Started:</h3>
+    <p>• <a href="${appLink}" style="color:#e6c17a;">📱 Download Our Mobile App</a></p>
+    <p>• <a href="${dashboardLink}" style="color:#e6c17a;">🌐 Access Website Dashboard</a></p>
+    <p>Start your learning journey with our premium legal courses!</p>
+  `;
+  
+  await sendEmail(to, subject, {
+    name,
+    subject,
+    message
+  });
+}
+
 // OTP email
 async function sendOtpEmail(to, otp, name) {
   await sendEmail(to, 'Legal Compass LMS - Your OTP Code', {
@@ -70,8 +92,5 @@ async function sendOtpEmail(to, otp, name) {
   });
 }
 
-module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail };
-
-
-module.exports = { sendEmail, sendWelcomeEmail };
+module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail };
 

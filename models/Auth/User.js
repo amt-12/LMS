@@ -2,13 +2,14 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    name: String,
+    name: { type: String, required: true, index: true },
     email: {
       type: String,
       unique: true,
+      required: true,
       index: true
     },
-    password: String,
+    password: { type: String, required: true },
     role: {
       type: String,
       enum: ["admin", "student"],
@@ -18,12 +19,22 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    phone: {
+      type: String,
+      default: ''
+    },
+    address: {
+      type: String,
+      default: ''
+    },
     tempExpiry: {
-      type: Date,
-      index: true
+      type: Date
     }
   },
   { timestamps: true }
 );
+
+// Explicit compound index for common queries in register/login
+userSchema.index({ email: 1, isTemp: 1 });
 
 module.exports = mongoose.model("User", userSchema);

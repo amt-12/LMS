@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { getCachedUser } = require("../cache");
+const { getCachedUser } = require("../middleware/cache");
 
 const protect = async (req, res, next) => {
   const token = req.cookies.token;
