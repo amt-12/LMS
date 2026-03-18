@@ -6,6 +6,11 @@ const { getLiveClassesController } = require('../../controller/zoom/getLiveClass
 const { getLiveClassController } = require('../../controller/zoom/getLiveClassController');
 const { joinLiveClassController } = require('../../controller/zoom/joinLiveClassController');
 const { hostJoinLiveClassController } = require('../../controller/zoom/hostJoinLiveClassController');
+const { signatureController } = require('../../controller/zoom/signatureController');
+
+// Signature for all
+router.post('/signature', signatureController);
+
 
 // Admin only: create, get all
 router.post('/', authMiddleware, createLiveClassController);

@@ -91,31 +91,67 @@ class ZoomService {
   /**
    * Generate Meeting SDK signature for secure join
    * @param {string} meetingNumber - Zoom meeting ID
-   * @param {string} role - '0' participant, '1' host
+   * @param {string|number} role - 0 participant, 1 host
    * @returns {object} signature data
    */
   async generateSignature(meetingNumber, role) {
-    role = role || '1'; // default host for admin (ES5 compatible)
+    const jwt = require('jsonwebtoken');
     const sdkKey = process.env.ZOOM_SDK_KEY;
     const sdkSecret = process.env.ZOOM_SDK_SECRET;
+    
     if (!sdkKey || !sdkSecret) {
-      throw new Error('ZOOM_SDK_KEY or ZOOM_SDK_SECRET missing in .env. Create Meeting SDK App at marketplace.zoom.us');
+      throw new Error('ZOOM_SDK_KEY or ZOOM_SDK_SECRET missing in .env');
     }
 
-    const timestamp = new Date().getTime() - 24 * 60 * 60 * 1000; // 24h ago per Zoom docs
-    const message = sdkKey + meetingNumber + role + timestamp;
-    const hash = crypto.createHmac('sha256', sdkSecret)
-                      .update(message)
-                      .digest('base64url'); // url-safe
-    const signature = Buffer.from(hash).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    const iat = Math.round(new Date().getTime() / 1000) - 30;
+    const exp = iat + 60 * 60 * 2; // 2 hours
+
+    const payload = {
+      sdkKey: sdkKey,
+      mn: meetingNumber,
+      role: parseInt(role),
+      iat: iat,
+      exp: exp,
+      appKey: sdkKey,
+      tokenExp: iat + 60 * 60 * 2
+    };
+
+    console.log('--- Zoom Signature Debug ---');
+    console.log('SDK Key:', sdkKey.substring(0, 5) + '...');
+    console.log('SDK Secret ends with:', sdkSecret.substring(sdkSecret.length - 5));
+    console.log('Payload:', JSON.stringify(payload, null, 2));
+
+    const signature = jwt.sign(payload, sdkSecret, { algorithm: 'HS256' });
+    console.log('Generated Signature (truncated):', signature.substring(0, 10) + '...');
 
     return {
       sdkKey,
       meetingNumber,
       role,
       signature,
-      timestamp
+      timestamp: iat
     };
+  }
+
+  /**
+   * Get ZAK token for a user
+   * @param {string} userId - Zoom user ID or email (defaults to 'me')
+   * @returns {string} zak token
+   */
+  async getZakToken(userId = 'me') {
+    try {
+      const accessToken = await this.getAccessToken();
+      const response = await axios.get(`${this.apiUrl}/users/${userId}/token`, {
+        params: { type: 'zak' },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return response.data.token;
+    } catch (error) {
+      console.error('Zoom ZAK token error:', error.response?.data || error.message);
+      throw new Error('Failed to get Zoom ZAK token: ' + (error.response?.data?.message || error.message));
+    }
   }
 }
 
