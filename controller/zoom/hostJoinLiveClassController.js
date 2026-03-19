@@ -35,13 +35,19 @@ const hostJoinLiveClassController = async (req, res) => {
     console.log('Fetching ZAK token for host join...');
     const zak = await zoomService.getZakToken();
 
+    // Generate signature for host (role=1)
+    console.log('Generating signature for host...');
+    const signatureData = await zoomService.generateSignature(meetingNumber, 1);
+
     res.json({
       success: true,
       data: {
         meetingNumber,
         zak,
         password,
-        role: 1 // host
+        role: 1, // host
+        sdkKey: signatureData.sdkKey,
+        signature: signatureData.signature,
       }
     });
   } catch (error) {
