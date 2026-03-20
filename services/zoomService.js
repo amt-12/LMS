@@ -34,7 +34,7 @@ class ZoomService {
         }
       );
 
-      console.log('Zoom token response:', JSON.stringify(response.data, null, 2));
+      // console.log('Zoom token response:', JSON.stringify(response.data, null, 2));
       this.accessToken = response.data.access_token;
       this.expiry = Date.now() + (response.data.expires_in * 1000);
       return this.accessToken;

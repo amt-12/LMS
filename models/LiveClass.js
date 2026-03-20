@@ -6,8 +6,9 @@ const liveClassSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  subject: {
-    type: String,
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
     required: true
   },
   zoomMeetingId: {
@@ -27,14 +28,17 @@ const liveClassSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  endTime: {
+    type: Date
+  },
   duration: {
     type: Number, // minutes
     default: 60
   },
   status: {
     type: String,
-    enum: ['scheduled', 'live', 'completed'],
-    default: 'scheduled'
+    enum: ['not-started', 'ongoing', 'completed'],
+    default: 'not-started'
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

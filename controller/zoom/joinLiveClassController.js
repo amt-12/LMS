@@ -32,23 +32,44 @@ const joinLiveClassController = async (req, res) => {
     }
 
     const liveClass = await LiveClass.findById(liveClassId);
-    if (!liveClass || liveClass.status === 'completed') {
+    if (!liveClass) {
       return res.status(404).json({
         success: false,
-        message: 'Live class not found or completed'
+        message: 'Live class not found'
       });
+    }
+
+    // Check computed status (fetch fresh)
+    const now = new Date();
+    const endTime = liveClass.endTime || new Date(liveClass.startTime.getTime() + liveClass.duration * 60 * 1000);
+    const computedStatus = now < liveClass.startTime ? 'not-started' : now < endTime ? 'ongoing' : 'completed';
+    
+    if (computedStatus === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Live class has ended'
+      });
+    }
+
+    // Check if first join - start class if was not-started
+    const joinCount = await StudentLiveClassJoin.countDocuments({ liveClassId, active: true });
+    if (computedStatus === 'not-started' && joinCount === 0) {
+      liveClass.status = 'ongoing';
+      await liveClass.save();
     }
 
     const joinRecord = new StudentLiveClassJoin({
       studentId,
       liveClassId,
-      deviceType
+      deviceType,
+      active: true
     });
 
     await joinRecord.save();
 
+    // Deactivate old joins for same student/class
     await StudentLiveClassJoin.updateMany(
-      { studentId, liveClassId, active: true },
+      { studentId, liveClassId, active: true, _id: { $ne: joinRecord._id } },
       { active: false }
     );
 
@@ -57,15 +78,18 @@ const joinLiveClassController = async (req, res) => {
       data: {
         joinUrl: liveClass.joinUrl,
         password: liveClass.password,
-        message: 'Joined. Preference: ' + deviceType
+        status: computedStatus === 'not-started' ? 'ongoing' : computedStatus, // now ongoing
+        message: 'Joined successfully. Device preference: ' + deviceType
       }
     });
   } catch (error) {
-    res.status(400).json({
+    console.error('Join error:', error);
+    res.status(500).json({
       success: false,
       message: error.message
     });
   }
 };
 
-module.exports ={joinLiveClassController}
+module.exports = { joinLiveClassController };
+
