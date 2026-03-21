@@ -92,5 +92,23 @@ async function sendOtpEmail(to, otp, name) {
   });
 }
 
-module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail };
+// Enrollment email
+async function sendEnrollmentEmail(to, name, courseName) {
+  const subject = 'Congratulations! You are officially enrolled!';
+  const message = `
+    <h3 style="color:#13294B;">Welcome to ${courseName || 'your course'}!</h3>
+    <p>Dear ${name},</p>
+    <p>We are thrilled to inform you that your enrollment has been activated by the admin.</p>
+    <p>You now have full access to all your course materials, live classes, and recorded lectures.</p>
+    <p>Log in to your mobile app to get started on your legal education journey!</p>
+  `;
+  
+  await sendEmail(to, subject, {
+    name,
+    subject,
+    message
+  });
+}
+
+module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail, sendEnrollmentEmail };
 

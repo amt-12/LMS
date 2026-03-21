@@ -28,7 +28,7 @@ const login = async (req, res) => {
     let user = cache.getCachedModel(email);
 
     if (!user) {
-      user = await User.findOne({ email }).lean().select('email isTemp tempExpiry');
+      user = await User.findOne({ email }).lean();
       cache.setCachedModel(email, user || { email, exists: false });
     }
     if (!user || user.exists === false) {
@@ -54,6 +54,37 @@ const login = async (req, res) => {
 
     if (!['student', 'admin'].includes(user.role)) {
       return res.status(403).json({ error: 'Access denied for this role' });
+    }
+
+    // Removed check blocking inactive student status here, access controlled by enrollment flag in mobile app
+
+    if (user.role === 'admin') {
+      // Admin login skips OTP
+      const token = jwt.sign(
+        { userId: user._id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '1d' }
+      );
+      const safeUser = {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        enrollment: user.enrollment,
+        course: user.course
+      };
+      cache.setCachedUser(user._id, safeUser);
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+      return res.status(200).json({
+        message: 'Admin login successful',
+        user: safeUser
+      });
     }
 
 

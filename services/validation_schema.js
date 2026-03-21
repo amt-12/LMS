@@ -11,6 +11,11 @@ const registerSchema = Joi.object({
     'string.email': 'Valid email is required',
     'any.required': 'Email is required'
   }),
+  phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+    'string.pattern.base': 'Phone must be exactly 10 digits',
+    'any.required': 'Phone number is required'
+  }),
+  course: Joi.string().allow('').optional(),
   password: Joi.string().min(6).required().messages({
     'string.min': 'Password must be at least 6 characters',
     'any.required': 'Password is required'

@@ -3,9 +3,9 @@ const Course = require('../../models/Course');
 const getCourses = async (req, res) => {
   try {
     // Admin check (following Student pattern)
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access only' });
-    }
+    // if (req.user.role !== 'admin') {
+    //   return res.status(403).json({ error: 'Admin access only' });
+    // }
 
     const { search, status, page = 1, limit = 10 } = req.query;
     const query = { status: status || { $ne: null } };
@@ -33,8 +33,8 @@ const getCourses = async (req, res) => {
       created: new Date(course.createdAt).toLocaleDateString()
     }));
 
-    res.json({ 
-      courses: courseList, 
+    res.json({
+      courses: courseList,
       pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) }
     });
   } catch (error) {

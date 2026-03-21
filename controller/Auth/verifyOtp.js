@@ -37,6 +37,7 @@ const verifyOtp = async (req, res) => {
     if (user.isTemp) {
       await User.findByIdAndUpdate(user._id, {
         isTemp: false,
+        status: 'active',
         $unset: { tempExpiry: 1 }
       });
       // Refresh user from DB
@@ -59,7 +60,9 @@ const verifyOtp = async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      status: user.status,
+      enrollment: user.enrollment
     };
     
     cache.setCachedUser(user._id, safeUser);

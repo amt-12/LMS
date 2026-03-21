@@ -13,7 +13,9 @@ const getStudents = async (req, res) => {
         { deletedAt: { $exists: false } }
       ]
     })
-      .select('name email phone address isTemp createdAt')
+      .populate('enrolledCourses', 'title')
+      .populate('enrolledSubjects', 'title')
+      .select('name email phone address isTemp createdAt enrollment course enrolledCourses enrolledSubjects')
       .lean()
       .sort({ createdAt: -1 });
 
@@ -26,6 +28,10 @@ const getStudents = async (req, res) => {
       phone: student.phone,
       address: student.address,
       status: student.isTemp ? 'Inactive' : 'Active',
+      enrollment: student.enrollment || 'inactive',
+      course: student.course,
+      enrolledCourses: student.enrolledCourses ? student.enrolledCourses.map(c => c.title) : [],
+      enrolledSubjects: student.enrolledSubjects ? student.enrolledSubjects.map(s => s.title) : [],
       joined: new Date(student.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       courses: 0,
       lectures: 0,
