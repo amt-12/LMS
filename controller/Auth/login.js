@@ -83,7 +83,8 @@ const login = async (req, res) => {
       });
       return res.status(200).json({
         message: 'Admin login successful',
-        user: safeUser
+        user: safeUser,
+        token: token
       });
     }
 
