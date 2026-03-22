@@ -3,9 +3,9 @@ const Course = require('../../models/Course');
 
 const getSubjectsByCourse = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access only' });
-    }
+    // if (req.user.role !== 'admin') {
+    //   return res.status(403).json({ error: 'Admin access only' });
+    // }
 
     const { courseId } = req.params;
 

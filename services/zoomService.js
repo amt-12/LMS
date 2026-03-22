@@ -60,6 +60,7 @@ class ZoomService {
           join_before_host: false,
           mute_upon_entry: true,
           password: this.generatePassword(),
+          auto_recording: 'none',
         },
       }, {
         headers: {
@@ -151,6 +152,63 @@ class ZoomService {
     } catch (error) {
       console.error('Zoom ZAK token error:', error.response?.data || error.message);
       throw new Error('Failed to get Zoom ZAK token: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * End a live meeting for all participants
+   * @param {string} meetingId - Zoom meeting ID
+   * @returns {object} response data
+   */
+  async endMeeting(meetingId) {
+    try {
+      const accessToken = await this.getAccessToken();
+      const response = await axios.put(`${this.apiUrl}/meetings/${meetingId}/status`, {
+        action: 'end'
+      }, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Zoom End Meeting error:', error.response?.data || error.message);
+      throw new Error('Failed to end Zoom meeting: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * Get all completed cloud recordings for the user
+   * @param {string} userId - Zoom user ID or email (defaults to 'me')
+   * @param {boolean} retry - Allow retrying once on scope error
+   * @returns {Array} List of recordings
+   */
+  async getRecordings(userId = 'me', retry = true) {
+    try {
+      const accessToken = await this.getAccessToken();
+      const response = await axios.get(`${this.apiUrl}/users/${userId}/recordings`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return response.data.meetings || [];
+    } catch (error) {
+      console.error('Zoom Get Recordings error:', error.response?.data || error.message);
+      
+      const errorCode = error.response?.data?.code ? Number(error.response.data.code) : null;
+      // If scopes are invalid, the token might be cached from before the user added the scope
+      if (errorCode === 4711 && retry) {
+        console.log('Force clearing cached Zoom access token and retrying...');
+        this.accessToken = null;
+        this.expiry = 0;
+        return this.getRecordings(userId, false);
+      }
+
+      if (errorCode === 4711) {
+        throw new Error(`Zoom scopes missing: ${error.response?.data?.message || ''}. Add 'cloud_recording:read:list_user_recordings' or 'cloud_recording:read:list_user_recordings:admin' scopes to your Zoom Server-to-Server OAuth App.`);
+      }
+      throw new Error('Failed to get Zoom recordings: ' + (error.response?.data?.message || error.message));
     }
   }
 }

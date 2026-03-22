@@ -3,9 +3,9 @@ const Course = require('../../models/Course');
 
 const getSubjects = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access only' });
-    }
+    // if (req.user.role !== 'admin') {
+    //   return res.status(403).json({ error: 'Admin access only' });
+    // }
 
     const { courseId, search, page = 1, limit = 10 } = req.query;
     let query = {};
@@ -38,8 +38,8 @@ const getSubjects = async (req, res) => {
       created: new Date(subject.createdAt).toLocaleDateString()
     }));
 
-    res.json({ 
-      subjects: subjectList, 
+    res.json({
+      subjects: subjectList,
       pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) }
     });
   } catch (error) {

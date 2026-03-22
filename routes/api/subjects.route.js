@@ -7,11 +7,11 @@ const { deleteSubject } = require('../../controller/Subject/deleteSubjectControl
 const { getSubjectsByCourse } = require('../../controller/Subject/getSubjectsByCourseController');
 
 const router = express.Router();
+router.get('/', getSubjects);
+router.get('/:courseId', getSubjectsByCourse);
 
 router.use(protect); // All routes require auth
 
-router.get('/', getSubjects);
-router.get('/:courseId', getSubjectsByCourse);
 router.post('/', createSubject);
 router.put('/:id', updateSubject);
 router.delete('/:id', deleteSubject);

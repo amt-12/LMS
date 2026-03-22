@@ -39,25 +39,19 @@ const joinLiveClassController = async (req, res) => {
       });
     }
 
-    // Check computed status (fetch fresh)
-    const now = new Date();
-    const endTime = liveClass.endTime || new Date(liveClass.startTime.getTime() + liveClass.duration * 60 * 1000);
-    const computedStatus = now < liveClass.startTime ? 'not-started' : now < endTime ? 'ongoing' : 'completed';
-    
-    if (computedStatus === 'completed') {
+    if (liveClass.status === 'completed') {
       return res.status(400).json({
         success: false,
-        message: 'Live class has ended'
+        message: 'Live class has ended.'
       });
     }
 
-    // Check if first join - start class if was not-started
-    const joinCount = await StudentLiveClassJoin.countDocuments({ liveClassId, active: true });
-    if (computedStatus === 'not-started' && joinCount === 0) {
-      liveClass.status = 'ongoing';
-      await liveClass.save();
+    if (liveClass.status === 'not-started') {
+      return res.status(403).json({
+        success: false,
+        message: 'The host has not started the meeting yet. Please wait.'
+      });
     }
-
     const joinRecord = new StudentLiveClassJoin({
       studentId,
       liveClassId,
@@ -78,7 +72,7 @@ const joinLiveClassController = async (req, res) => {
       data: {
         joinUrl: liveClass.joinUrl,
         password: liveClass.password,
-        status: computedStatus === 'not-started' ? 'ongoing' : computedStatus, // now ongoing
+        status: liveClass.status,
         message: 'Joined successfully. Device preference: ' + deviceType
       }
     });

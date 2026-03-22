@@ -7,22 +7,10 @@ const getLiveClassController = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Live class not found' });
     }
 
-    // Compute dynamic status
-    const now = new Date();
-    const endTime = liveClass.endTime || new Date(liveClass.startTime.getTime() + liveClass.duration * 60 * 1000);
-    
-    let computedStatus;
-    if (now < liveClass.startTime) {
-      computedStatus = 'not-started';
-    } else if (now < endTime) {
-      computedStatus = 'ongoing';
-    } else {
-      computedStatus = 'completed';
+    // Ensure endTime is set if missing
+    if (!liveClass.endTime) {
+      liveClass.endTime = new Date(liveClass.startTime.getTime() + liveClass.duration * 60 * 1000);
     }
-    
-    // Override for response
-    liveClass.status = computedStatus;
-    liveClass.endTime = endTime;
 
     res.json({
       success: true,

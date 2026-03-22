@@ -8,24 +8,12 @@ const getLiveClassesController = async (req, res) => {
       populate: { path: 'courseId', select: 'title' }
     }).sort({ startTime: -1 });
     
-    // Compute dynamic status for each class
-    const now = new Date();
+    // Process end times and enforce explicit DB status
     const classesWithStatus = liveClasses.map(liveClass => {
-      const endTime = liveClass.endTime || new Date(liveClass.startTime.getTime() + liveClass.duration * 60 * 1000);
-      
-      let computedStatus;
-      if (now < liveClass.startTime) {
-        computedStatus = 'not-started';
-      } else if (now < endTime) {
-        computedStatus = 'ongoing';
-      } else {
-        computedStatus = 'completed';
+      // Ensure endTime is set
+      if (!liveClass.endTime) {
+        liveClass.endTime = new Date(liveClass.startTime.getTime() + liveClass.duration * 60 * 1000);
       }
-      
-      // Override status for response (don't save to DB)
-      liveClass.status = computedStatus;
-      liveClass.endTime = endTime; // Ensure endTime is set
-      
       return liveClass;
     });
 
