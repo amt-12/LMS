@@ -5,6 +5,7 @@ const studentsRoutes = require("./Students.route");
 const courseRoutes = require("./courses.route");
 const subjectRoutes = require("./subjects.route");
 const demoClassRoutes = require("./DemoClass.route");
+const notificationsRoutes = require("./notifications.route");
 
 const liveClassRoutes = require("./liveClasses.route");
 
@@ -16,5 +17,6 @@ router.use("/courses", courseRoutes);
 router.use("/subjects", subjectRoutes);
 router.use("/live-classes", liveClassRoutes);
 router.use("/demo-classes", demoClassRoutes);
+router.use("/notifications", notificationsRoutes);
 
 module.exports = router;
