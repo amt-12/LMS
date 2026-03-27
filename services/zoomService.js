@@ -60,7 +60,7 @@ class ZoomService {
           join_before_host: false,
           mute_upon_entry: true,
           password: this.generatePassword(),
-          auto_recording: 'none',
+          auto_recording: 'cloud',
         },
       }, {
         headers: {
@@ -184,25 +184,110 @@ class ZoomService {
    * @param {boolean} retry - Allow retrying once on scope error
    * @returns {Array} List of recordings
    */
-  async getRecordings(userId = 'me', retry = true) {
+  /**
+   * Update a Zoom meeting (topic, start_time, duration)
+   * @param {string} meetingId - Zoom meeting ID
+   * @param {string} topic - New meeting title
+   * @param {Date|string} startTime - New start time
+   * @param {number} duration - Duration in minutes
+   */
+  async updateMeeting(meetingId, topic, startTime, duration) {
     try {
       const accessToken = await this.getAccessToken();
-      const response = await axios.get(`${this.apiUrl}/users/${userId}/recordings`, {
+      await axios.patch(`${this.apiUrl}/meetings/${meetingId}`, {
+        topic,
+        start_time: new Date(startTime).toISOString(),
+        duration,
+        timezone: 'UTC',
+      }, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Zoom Update Meeting error:', error.response?.data || error.message);
+      throw new Error('Failed to update Zoom meeting: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * Delete a Zoom meeting
+   * @param {string} meetingId - Zoom meeting ID
+   */
+  async deleteMeeting(meetingId) {
+    try {
+      const accessToken = await this.getAccessToken();
+      await axios.delete(`${this.apiUrl}/meetings/${meetingId}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      return response.data.meetings || [];
+      return { success: true };
+    } catch (error) {
+      console.error('Zoom Delete Meeting error:', error.response?.data || error.message);
+      throw new Error('Failed to delete Zoom meeting: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * Get cloud recordings for the user across the last N months.
+   * Zoom API requires a 'from' date; max range per call is 1 month.
+   * @param {string} userId - Zoom user ID or email (defaults to 'me')
+   * @param {number} monthsBack - How many months back to search (default 6)
+   * @param {boolean} retry - Allow retrying once on scope error
+   * @returns {Array} List of recording meetings
+   */
+  async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
+    try {
+      const accessToken = await this.getAccessToken();
+
+      // Zoom API only accepts max 1 month per request, so we page through months
+      const allMeetings = [];
+      const seen = new Set();
+      const now = new Date();
+
+      for (let i = 0; i < monthsBack; i++) {
+        const to = new Date(now);
+        to.setMonth(to.getMonth() - i);
+        const from = new Date(to);
+        from.setMonth(from.getMonth() - 1);
+
+        const fromStr = from.toISOString().split('T')[0]; // yyyy-MM-dd
+        const toStr   = to.toISOString().split('T')[0];
+
+        console.log(`[Zoom Recordings] Fetching range: ${fromStr} → ${toStr}`);
+
+        const response = await axios.get(`${this.apiUrl}/users/${userId}/recordings`, {
+          params: { from: fromStr, to: toStr, page_size: 300 },
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        const meetings = response.data.meetings || [];
+        console.log(`[Zoom Recordings] Range ${fromStr}→${toStr}: ${meetings.length} meetings, total_records=${response.data.total_records}`);
+
+        for (const m of meetings) {
+          if (!seen.has(m.uuid)) {
+            seen.add(m.uuid);
+            allMeetings.push(m);
+          }
+        }
+      }
+
+      console.log(`[Zoom Recordings] Grand total returned: ${allMeetings.length} meetings`);
+      return allMeetings;
     } catch (error) {
       console.error('Zoom Get Recordings error:', error.response?.data || error.message);
-      
+
       const errorCode = error.response?.data?.code ? Number(error.response.data.code) : null;
+
       // If scopes are invalid, the token might be cached from before the user added the scope
       if (errorCode === 4711 && retry) {
         console.log('Force clearing cached Zoom access token and retrying...');
         this.accessToken = null;
         this.expiry = 0;
-        return this.getRecordings(userId, false);
+        return this.getRecordings(userId, monthsBack, false);
       }
 
       if (errorCode === 4711) {
@@ -214,3 +299,4 @@ class ZoomService {
 }
 
 module.exports = new ZoomService();
+

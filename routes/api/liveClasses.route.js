@@ -11,6 +11,8 @@ const { setReminderController } = require('../../controller/zoom/setReminderCont
 const { getRecordingsController } = require('../../controller/zoom/getRecordingsController');
 const { startLiveClassController } = require('../../controller/zoom/startLiveClassController');
 const { endLiveClassController } = require('../../controller/zoom/endLiveClassController');
+const { updateLiveClassController } = require('../../controller/zoom/updateLiveClassController');
+const { deleteLiveClassController } = require('../../controller/zoom/deleteLiveClassController');
 
 // Signature for all
 router.post('/signature', signatureController);
@@ -34,6 +36,10 @@ router.get('/:id/host', authMiddleware, hostJoinLiveClassController);
 // Admin explicit start / end meeting
 router.put('/:id/start', authMiddleware, startLiveClassController);
 router.put('/:id/end', authMiddleware, endLiveClassController);
+
+// Admin: edit and delete a class
+router.put('/:id', authMiddleware, updateLiveClassController);
+router.delete('/:id', authMiddleware, deleteLiveClassController);
 
 // Student join
 router.post('/join', authMiddleware, joinLiveClassController);
