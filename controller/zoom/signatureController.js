@@ -1,4 +1,6 @@
 const zoomService = require('../../services/zoomService');
+const User = require('../../models/Auth/User');
+const LiveClass = require('../../models/LiveClass');
 
 const signatureController = async (req, res) => {
   try {
@@ -16,6 +18,24 @@ const signatureController = async (req, res) => {
 
     console.log('--- Signature & ZAK Request ---');
     console.log('Body:', req.body);
+
+    // Enrollment check for participants
+    if (userRole === 0) {
+      const studentId = req.user.id;
+      const student = await User.findById(studentId).select('role enrolledSubjects');
+      if (student.role === 'student') {
+        const liveClass = await LiveClass.findOne({ zoomMeetingId: meetingNumber }).populate('subjectId', 'title');
+        if (!liveClass) {
+          return res.status(404).json({ success: false, message: 'Live class not found' });
+        }
+        if (!student.enrolledSubjects?.includes(liveClass.subjectId._id)) {
+          return res.status(403).json({ 
+            success: false, 
+            message: `Not enrolled for subject: ${liveClass.subjectId.title}` 
+          });
+        }
+      }
+    }
 
     let responseData = {
       success: true,

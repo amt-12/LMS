@@ -1,5 +1,6 @@
 const StudentLiveClassJoin = require('../../models/StudentLiveClassJoin');
 const LiveClass = require('../../models/LiveClass');
+const User = require('../../models/Auth/User');
 
 const joinLiveClassController = async (req, res) => {
   try {
@@ -31,12 +32,23 @@ const joinLiveClassController = async (req, res) => {
       }
     }
 
-    const liveClass = await LiveClass.findById(liveClassId);
+    const liveClass = await LiveClass.findById(liveClassId).populate('subjectId', 'title');
     if (!liveClass) {
       return res.status(404).json({
         success: false,
         message: 'Live class not found'
       });
+    }
+
+    // Enrollment check
+    const student = await User.findById(studentId).select('role enrolledSubjects');
+    if (student.role === 'student') {
+      if (!student.enrolledSubjects?.includes(liveClass.subjectId._id)) {
+        return res.status(403).json({ 
+          success: false, 
+          message: `Not enrolled for subject: ${liveClass.subjectId.title}` 
+        });
+      }
     }
 
     if (liveClass.status === 'completed') {

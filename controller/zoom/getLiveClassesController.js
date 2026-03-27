@@ -1,16 +1,34 @@
-const LiveClass = require('../../models/LiveClass');
+const User = require('../../models/Auth/User');
 
 const getLiveClassesController = async (req, res) => {
   try {
-    const liveClasses = await LiveClass.find().populate('createdBy', 'name').populate({
-      path: 'subjectId',
-      select: 'title courseId',
-      populate: { path: 'courseId', select: 'title' }
-    }).sort({ startTime: -1 });
+    const userId = req.user._id;
+    const user = await User.findById(userId).select('role enrollment enrolledCourses enrolledSubjects');
     
-    // Process end times and enforce explicit DB status
+    let query = {};
+    
+    // For students
+    if (user.role === 'student') {
+      if (user.enrollment === 'active') {
+        // Enrolled students see classes for enrolled subjects/courses
+        query.subjectId = { $in: user.enrolledSubjects };
+      } else {
+        // Unenrolled students see demo classes only (handled frontend or separate endpoint)
+        query = { isDemo: true }; // Assume demo flag or filter frontend
+      }
+    }
+    
+    const liveClasses = await LiveClass.find(query)
+      .populate('createdBy', 'name')
+      .populate({
+        path: 'subjectId',
+        select: 'title courseId',
+        populate: { path: 'courseId', select: 'title' }
+      })
+      .sort({ startTime: -1 });
+    
+    // Process end times
     const classesWithStatus = liveClasses.map(liveClass => {
-      // Ensure endTime is set
       if (!liveClass.endTime) {
         liveClass.endTime = new Date(liveClass.startTime.getTime() + liveClass.duration * 60 * 1000);
       }
@@ -28,6 +46,8 @@ const getLiveClassesController = async (req, res) => {
     });
   }
 };
+
+module.exports = { getLiveClassesController };
 
 module.exports = { getLiveClassesController };
 

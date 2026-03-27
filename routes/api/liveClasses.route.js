@@ -15,7 +15,7 @@ const { updateLiveClassController } = require('../../controller/zoom/updateLiveC
 const { deleteLiveClassController } = require('../../controller/zoom/deleteLiveClassController');
 
 // Signature for all
-router.post('/signature', signatureController);
+router.post('/signature', authMiddleware, signatureController);
 
 // Admin only: create, get all
 router.post('/', authMiddleware, createLiveClassController);
