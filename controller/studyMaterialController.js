@@ -121,13 +121,13 @@ const getDownloadUrl = async (req, res) => {
     const s3Client = new S3Client({
       region: process.env.AWS_REGION || 'ap-south-1',
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+        accessKeyId: "AKIAXYKJUX53D33EHRF5",
+        secretAccessKey: "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"
       }
     });
 
     // Check if watermark needed (student)
-    if (watermark === 'true' && req.user?.role === 'student' && studentName) {
+    if (watermark === 'true' && studentName) {
       console.log(`Applying watermark for student: ${studentName} on ${material.fileName}`);
       
       // Get PDF buffer from S3
@@ -149,13 +149,22 @@ const getDownloadUrl = async (req, res) => {
         const watermarkText = `Student: ${studentName}`;
         const fontSize = 40;
         
-        // Diagonal watermark
+        // Bottom-right to top-left diagonal
       page.drawText(watermarkText, {
-        x: width / 2,
-        y: height / 2,
+        x: width - 150,
+        y: 100,
         size: fontSize,
         angle: degrees(-45),
-        color: rgb(0.8, 0.8, 0.8), // Light gray
+        color: rgb(0.7, 0.7, 0.7), // Slightly darker
+      });
+      
+      // Secondary instance across diagonal
+      page.drawText(watermarkText, {
+        x: 100,
+        y: height - 150,
+        size: fontSize * 0.9,
+        angle: degrees(-45),
+        color: rgb(0.8, 0.8, 0.8),
       });
       });
 
