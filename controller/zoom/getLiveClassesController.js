@@ -1,9 +1,17 @@
 const User = require('../../models/Auth/User');
+const LiveClass = require('../../models/LiveClass');
 
 const getLiveClassesController = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.userId || req.user._id;
     const user = await User.findById(userId).select('role enrollment enrolledCourses enrolledSubjects');
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
     
     let query = {};
     

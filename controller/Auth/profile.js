@@ -3,7 +3,7 @@ const User = require("../../models/Auth/User");
 // Get Profile
 const getProfile = async (req, res) => {
   try {
-    const userId = req.user._id || req.user.userId || req.user.id;
+    const userId = req.user.userId || req.user._id;
     const user = await User.findById(userId)
       .populate('enrolledCourses', 'title description')
       .select('name email phone address role status enrollment isTemp course createdAt enrolledCourses')
@@ -50,7 +50,7 @@ const updateProfile = async (req, res) => {
     if (phone !== undefined) updateData.phone = phone;
     if (address !== undefined) updateData.address = address;
 
-    const userId = req.user._id || req.user.userId || req.user.id;
+    const userId = req.user.userId || req.user._id;
     const user = await User.findByIdAndUpdate(
       userId,
       updateData,
@@ -84,7 +84,7 @@ const updateProfile = async (req, res) => {
 // Delete Profile
 const deleteProfile = async (req, res) => {
   try {
-    const userId = req.user._id || req.user.userId || req.user.id;
+    const userId = req.user.userId || req.user._id;
     const user = await User.findByIdAndUpdate(
       userId,
       { deletedAt: new Date() }

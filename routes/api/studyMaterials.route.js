@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { protect } = require('../../middleware/authMiddleware');
-const { uploadMaterial, getMaterials, getDownloadUrl, deleteMaterial } = require('../../controller/studyMaterialController');
+const { uploadMaterial, getMaterials, getDownloadUrl, deleteMaterial, testS3Connection } = require('../../controller/studyMaterialController');
 
 const router = express.Router();
 

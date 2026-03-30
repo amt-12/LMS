@@ -7,12 +7,14 @@ const subjectRoutes = require("./subjects.route");
 const demoClassRoutes = require("./DemoClass.route");
 const notificationsRoutes = require("./notifications.route");
 const studyMaterialsRoutes = require("./studyMaterials.route");
+const testRoutes = require("./test.route");
 
 const liveClassRoutes = require("./liveClasses.route");
 
 const router = express.Router();
 
 router.use("/auth", authRoutes);
+router.use("/test", testRoutes);
 router.use("/study-materials", studyMaterialsRoutes);
 router.use("/students", studentsRoutes);
 router.use("/courses", courseRoutes);

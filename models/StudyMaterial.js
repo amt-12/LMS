@@ -37,6 +37,5 @@ const studyMaterialSchema = new mongoose.Schema({
 
 // Index for performance
 studyMaterialSchema.index({ course: 1, createdAt: -1 });
-studyMaterialSchema.index({ s3Key: 1 });
 
 module.exports = mongoose.model('StudyMaterial', studyMaterialSchema);

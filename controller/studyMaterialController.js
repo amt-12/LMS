@@ -1,6 +1,6 @@
 const StudyMaterial = require('../models/StudyMaterial');
 const Course = require('../models/Course');
-const { uploadToS3, generateSignedUrl: getSignedUrl, deleteFromS3 } = require('../services/s3Service');
+const { uploadToS3, generateSignedUrl: getSignedUrl, deleteFromS3, testS3Connection } = require('../services/s3Service');
 
 const uploadMaterial = async (req, res) => {
   try {
@@ -53,6 +53,14 @@ const uploadMaterial = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload material error:', error);
+    
+    if (error.message.includes('AWS') || error.message.includes('S3')) {
+      return res.status(500).json({ 
+        error: `Upload failed: ${error.message}`,
+        s3Error: true 
+      });
+    }
+    
     res.status(500).json({ error: 'Server error during upload' });
   }
 };
@@ -101,19 +109,83 @@ const getMaterials = async (req, res) => {
 const getDownloadUrl = async (req, res) => {
   try {
     const { id } = req.params;
+    const { watermark, studentName } = req.query;
 
     const material = await StudyMaterial.findById(id);
     if (!material) {
       return res.status(404).json({ error: 'Material not found' });
     }
 
-    const signedUrl = await getSignedUrl(material.s3Key);
-    res.json({ downloadUrl: signedUrl });
+    const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+    const { PDFDocument, rgb, degrees } = require('pdf-lib');
+    const s3Client = new S3Client({
+      region: process.env.AWS_REGION || 'ap-south-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+      }
+    });
+
+    // Check if watermark needed (student)
+    if (watermark === 'true' && req.user?.role === 'student' && studentName) {
+      console.log(`Applying watermark for student: ${studentName} on ${material.fileName}`);
+      
+      // Get PDF buffer from S3
+      const getObjectCommand = new GetObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET || 'lms-aja',
+        Key: material.s3Key
+      });
+      const s3Object = await s3Client.send(getObjectCommand);
+      const pdfBuffer = await streamToBuffer(s3Object.Body);
+
+      // Load PDF
+      const pdfDoc = await PDFDocument.load(pdfBuffer);
+      const pages = pdfDoc.getPages();
+      const helveticaFont = await pdfDoc.embedFont('Helvetica');
+
+      // Watermark each page
+      pages.forEach((page) => {
+        const { width, height } = page.getSize();
+        const watermarkText = `Student: ${studentName}`;
+        const fontSize = 40;
+        
+        // Diagonal watermark
+      page.drawText(watermarkText, {
+        x: width / 2,
+        y: height / 2,
+        size: fontSize,
+        angle: degrees(-45),
+        color: rgb(0.8, 0.8, 0.8), // Light gray
+      });
+      });
+
+      // Save modified PDF
+      const watermarkedPdfBytes = await pdfDoc.save();
+
+      // Stream response
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${material.fileName.replace('.pdf', '_watermarked.pdf')}"`);
+      res.send(watermarkedPdfBytes);
+    } else {
+      // Original for admins/teachers
+      const { generateSignedUrl } = require('../services/s3Service');
+      const signedUrl = await generateSignedUrl(material.s3Key);
+      res.json({ downloadUrl: signedUrl });
+    }
   } catch (error) {
     console.error('Get download URL error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// Helper function to convert stream to buffer
+async function streamToBuffer(readableStream) {
+  const chunks = [];
+  for await (const chunk of readableStream) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
 
 const deleteMaterial = async (req, res) => {
   try {
@@ -133,7 +205,29 @@ const deleteMaterial = async (req, res) => {
     res.json({ message: 'Material deleted successfully' });
   } catch (error) {
     console.error('Delete material error:', error);
+    if (error.message.includes('S3')) {
+      return res.status(500).json({ error: `Delete failed: ${error.message}` });
+    }
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+const testS3 = async (req, res) => {
+  try {
+    const result = await testS3Connection();
+    if (result.success) {
+      res.json({ 
+        message: 'S3 connection healthy',
+        bucket: result.bucket 
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'S3 connection failed',
+        details: result.error 
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -141,5 +235,6 @@ module.exports = {
   uploadMaterial,
   getMaterials,
   getDownloadUrl,
-  deleteMaterial
+  deleteMaterial,
+  testS3
 };
