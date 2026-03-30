@@ -31,7 +31,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: "http://localhost:8080",
+  origin: "https://abhishekjudicialacademy-admin.vercel.app/",
   credentials: true
 }));
 
