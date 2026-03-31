@@ -126,7 +126,7 @@ const getDownloadUrl = async (req, res) => {
       }
     });
 
-    // Check if watermark needed (student)
+    // Check if watermark needed
     if (watermark === 'true' && studentName) {
       console.log(`Applying watermark for student: ${studentName} on ${material.fileName}`);
       
@@ -143,29 +143,38 @@ const getDownloadUrl = async (req, res) => {
       const pages = pdfDoc.getPages();
       const helveticaFont = await pdfDoc.embedFont('Helvetica');
 
-      // Watermark each page
+      // Watermark each page - Full page diagonal bottom-left to top-right
       pages.forEach((page) => {
         const { width, height } = page.getSize();
         const watermarkText = `Student: ${studentName}`;
-        const fontSize = 40;
+        const fontSize = 45;
         
-        // Bottom-right to top-left diagonal
-      page.drawText(watermarkText, {
-        x: width - 150,
-        y: 100,
-        size: fontSize,
-        angle: degrees(-45),
-        color: rgb(0.7, 0.7, 0.7), // Slightly darker
-      });
-      
-      // Secondary instance across diagonal
-      page.drawText(watermarkText, {
-        x: 100,
-        y: height - 150,
-        size: fontSize * 0.9,
-        angle: degrees(-45),
-        color: rgb(0.8, 0.8, 0.8),
-      });
+        // Main full-page diagonal (bottom-left to top-right)
+        page.drawText(watermarkText, {
+          x: 50,
+          y: height,
+          size: fontSize,
+          angle: degrees(45),
+          color: rgb(0.7, 0.7, 0.7),
+        });
+        
+        // Secondary diagonal offset for coverage
+        page.drawText(watermarkText, {
+          x: width - 200,
+          y: 50,
+          size: fontSize,
+          angle: degrees(45),
+          color: rgb(0.8, 0.8, 0.8),
+        });
+        
+        // Third instance for complete coverage
+        page.drawText(watermarkText, {
+          x: width / 2 - 100,
+          y: height / 2,
+          size: fontSize * 0.8,
+          angle: degrees(45),
+          color: rgb(0.75, 0.75, 0.75),
+        });
       });
 
       // Save modified PDF

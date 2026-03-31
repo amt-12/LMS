@@ -3,10 +3,10 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 
 /* HARDCODED AWS VALUES - PER USER INSTRUCTION (not for production/git) */
-const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID || 'AKIAXYKJUX53D33EHRF5';
-const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY || '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';
-const AWS_REGION = process.env.AWS_REGION || 'ap-south-1';
-const AWS_S3_BUCKET = process.env.AWS_S3_BUCKET || 'lms-aja';
+const AWS_ACCESS_KEY_ID = 'AKIAXYKJUX53D33EHRF5';
+const AWS_SECRET_ACCESS_KEY =  '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';
+const AWS_REGION = 'ap-south-1';
+const AWS_S3_BUCKET ='lms-aja';
 
 const BUCKET_NAME = AWS_S3_BUCKET;
 
@@ -47,9 +47,9 @@ const initS3Client = async () => {
   }
 };
 
-const uploadToS3 = async (fileBuffer, fileName, mimeType) => {
+const uploadToS3 = async (fileBuffer, fileName, mimeType, customKey = null) => {
   const client = await initS3Client();
-  const s3Key = `study-materials/${Date.now()}-${fileName}`;
+  const s3Key = customKey || `study-materials/${Date.now()}-${fileName}`;
   
   const params = {
     Bucket: BUCKET_NAME,

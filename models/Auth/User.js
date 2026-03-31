@@ -51,6 +51,10 @@ const userSchema = new mongoose.Schema(
     },
     tempExpiry: {
       type: Date
+    },
+    profileImage: {
+      type: String,
+      default: null
     }
   },
   { timestamps: true }
