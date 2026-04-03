@@ -5,10 +5,27 @@ const cookieParser = require("cookie-parser");
 
 const connectDB = require("./config/db.js");
 const routes = require("./routes");
+const { startReminderCron } = require('./services/reminderService'); // Reminder cron
 
-dotenv.config();
+dotenv.config({ path: './.env' });
+
+// HARDCODED ENV VARS - PER USER INSTRUCTION (override .env for completeness)
+process.env.MONGO_URI = 'mongodb+srv://amrit0207232_db_user:TQe6BWQTpqQa8hPZ@cluster0lms.blzzhqa.mongodb.net/';
+process.env.ZOOM_CLIENT_ID = 'NCIsNwOCSXQnWazwwRQQ';
+process.env.ZOOM_CLIENT_SECRET = '1iTAAVsPR1b83jqNMJ6c1U7Q27b1EJ14';
+process.env.ZOOM_ACCOUNT_ID = 'sMDadvpMS9aKKfW3o9MfhQ';
+process.env.JWT_SECRET = 'kuchbhi';
+process.env.PORT = '5001';
+process.env.ZOOM_SDK_KEY = 'cBry1jKwQ6m_DPI6QDVmAg';
+process.env.ZOOM_SDK_SECRET = '1EIh9Xhh3ToJvONx5hJ46Eu4LXBYUDJZ';
+process.env.CORS = 'https://abhishekjudicialacademy-admin.vercel.app/';
+
 
 connectDB();
+
+const http = require('http');
+const socketIo = require('socket.io');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(express.json());
@@ -18,18 +35,54 @@ app.use(cors({
   credentials: true
 }));
 
-
-
-
 app.use(routes);
 
 app.get("/", (req, res) => {
-  res.send("Law LMS API Running");
+  res.send("Law LMS API Running ✅ with Live Classes & Reminders");
+});
+
+const server = http.createServer(app);
+
+io = socketIo(server, {
+  cors: {
+    origin: process.env.CORS, 
+    credentials: true
+  }
+});
+
+global.io = io;
+
+io.use((socket, next) => {
+  try {
+    const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
+    if (!token) return next(new Error('Authentication error'));
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
+    next();
+  } catch (err) {
+    next(new Error('Authentication error'));
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.userId);
+  socket.join(`user_${socket.userId}`);
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.userId);
+  });
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  const { stopReminderCron } = require('./services/reminderService');
+  stopReminderCron();
+  process.exit(0);
 });
 
 const PORT = process.env.PORT || 5001;
 
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
+  startReminderCron();
 });
+

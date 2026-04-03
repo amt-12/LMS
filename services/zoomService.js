@@ -34,7 +34,7 @@ class ZoomService {
         }
       );
 
-      console.log('Zoom token response:', JSON.stringify(response.data, null, 2));
+      // console.log('Zoom token response:', JSON.stringify(response.data, null, 2));
       this.accessToken = response.data.access_token;
       this.expiry = Date.now() + (response.data.expires_in * 1000);
       return this.accessToken;
@@ -60,6 +60,7 @@ class ZoomService {
           join_before_host: false,
           mute_upon_entry: true,
           password: this.generatePassword(),
+          auto_recording: 'cloud',
         },
       }, {
         headers: {
@@ -91,32 +92,211 @@ class ZoomService {
   /**
    * Generate Meeting SDK signature for secure join
    * @param {string} meetingNumber - Zoom meeting ID
-   * @param {string} role - '0' participant, '1' host
+   * @param {string|number} role - 0 participant, 1 host
    * @returns {object} signature data
    */
   async generateSignature(meetingNumber, role) {
-    role = role || '1'; // default host for admin (ES5 compatible)
+    const jwt = require('jsonwebtoken');
     const sdkKey = process.env.ZOOM_SDK_KEY;
     const sdkSecret = process.env.ZOOM_SDK_SECRET;
+    
     if (!sdkKey || !sdkSecret) {
-      throw new Error('ZOOM_SDK_KEY or ZOOM_SDK_SECRET missing in .env. Create Meeting SDK App at marketplace.zoom.us');
+      throw new Error('ZOOM_SDK_KEY or ZOOM_SDK_SECRET missing in .env');
     }
 
-    const timestamp = new Date().getTime() - 24 * 60 * 60 * 1000; // 24h ago per Zoom docs
-    const message = sdkKey + meetingNumber + role + timestamp;
-    const hash = crypto.createHmac('sha256', sdkSecret)
-                      .update(message)
-                      .digest('base64url'); // url-safe
-    const signature = Buffer.from(hash).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    const iat = Math.round(new Date().getTime() / 1000) - 30;
+    const exp = iat + 60 * 60 * 2; // 2 hours
+
+    const payload = {
+      sdkKey: sdkKey,
+      mn: meetingNumber,
+      role: parseInt(role),
+      iat: iat,
+      exp: exp,
+      appKey: sdkKey,
+      tokenExp: iat + 60 * 60 * 2
+    };
+
+    console.log('--- Zoom Signature Debug ---');
+    console.log('SDK Key:', sdkKey.substring(0, 5) + '...');
+    console.log('SDK Secret ends with:', sdkSecret.substring(sdkSecret.length - 5));
+    console.log('Payload:', JSON.stringify(payload, null, 2));
+
+    const signature = jwt.sign(payload, sdkSecret, { algorithm: 'HS256' });
+    console.log('Generated Signature (truncated):', signature.substring(0, 10) + '...');
 
     return {
       sdkKey,
       meetingNumber,
       role,
       signature,
-      timestamp
+      timestamp: iat
     };
+  }
+
+  /**
+   * Get ZAK token for a user
+   * @param {string} userId - Zoom user ID or email (defaults to 'me')
+   * @returns {string} zak token
+   */
+  async getZakToken(userId = 'me') {
+    try {
+      const accessToken = await this.getAccessToken();
+      const response = await axios.get(`${this.apiUrl}/users/${userId}/token`, {
+        params: { type: 'zak' },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return response.data.token;
+    } catch (error) {
+      console.error('Zoom ZAK token error:', error.response?.data || error.message);
+      throw new Error('Failed to get Zoom ZAK token: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * End a live meeting for all participants
+   * @param {string} meetingId - Zoom meeting ID
+   * @returns {object} response data
+   */
+  async endMeeting(meetingId) {
+    try {
+      const accessToken = await this.getAccessToken();
+      const response = await axios.put(`${this.apiUrl}/meetings/${meetingId}/status`, {
+        action: 'end'
+      }, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Zoom End Meeting error:', error.response?.data || error.message);
+      throw new Error('Failed to end Zoom meeting: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * Get all completed cloud recordings for the user
+   * @param {string} userId - Zoom user ID or email (defaults to 'me')
+   * @param {boolean} retry - Allow retrying once on scope error
+   * @returns {Array} List of recordings
+   */
+  /**
+   * Update a Zoom meeting (topic, start_time, duration)
+   * @param {string} meetingId - Zoom meeting ID
+   * @param {string} topic - New meeting title
+   * @param {Date|string} startTime - New start time
+   * @param {number} duration - Duration in minutes
+   */
+  async updateMeeting(meetingId, topic, startTime, duration) {
+    try {
+      const accessToken = await this.getAccessToken();
+      await axios.patch(`${this.apiUrl}/meetings/${meetingId}`, {
+        topic,
+        start_time: new Date(startTime).toISOString(),
+        duration,
+        timezone: 'UTC',
+      }, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Zoom Update Meeting error:', error.response?.data || error.message);
+      throw new Error('Failed to update Zoom meeting: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * Delete a Zoom meeting
+   * @param {string} meetingId - Zoom meeting ID
+   */
+  async deleteMeeting(meetingId) {
+    try {
+      const accessToken = await this.getAccessToken();
+      await axios.delete(`${this.apiUrl}/meetings/${meetingId}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Zoom Delete Meeting error:', error.response?.data || error.message);
+      throw new Error('Failed to delete Zoom meeting: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * Get cloud recordings for the user across the last N months.
+   * Zoom API requires a 'from' date; max range per call is 1 month.
+   * @param {string} userId - Zoom user ID or email (defaults to 'me')
+   * @param {number} monthsBack - How many months back to search (default 6)
+   * @param {boolean} retry - Allow retrying once on scope error
+   * @returns {Array} List of recording meetings
+   */
+  async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
+    try {
+      const accessToken = await this.getAccessToken();
+
+      // Zoom API only accepts max 1 month per request, so we page through months
+      const allMeetings = [];
+      const seen = new Set();
+      const now = new Date();
+
+      for (let i = 0; i < monthsBack; i++) {
+        const to = new Date(now);
+        to.setMonth(to.getMonth() - i);
+        const from = new Date(to);
+        from.setMonth(from.getMonth() - 1);
+
+        const fromStr = from.toISOString().split('T')[0]; // yyyy-MM-dd
+        const toStr   = to.toISOString().split('T')[0];
+
+        console.log(`[Zoom Recordings] Fetching range: ${fromStr} → ${toStr}`);
+
+        const response = await axios.get(`${this.apiUrl}/users/${userId}/recordings`, {
+          params: { from: fromStr, to: toStr, page_size: 300 },
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        const meetings = response.data.meetings || [];
+        console.log(`[Zoom Recordings] Range ${fromStr}→${toStr}: ${meetings.length} meetings, total_records=${response.data.total_records}`);
+
+        for (const m of meetings) {
+          if (!seen.has(m.uuid)) {
+            seen.add(m.uuid);
+            allMeetings.push(m);
+          }
+        }
+      }
+
+      console.log(`[Zoom Recordings] Grand total returned: ${allMeetings.length} meetings`);
+      return allMeetings;
+    } catch (error) {
+      console.error('Zoom Get Recordings error:', error.response?.data || error.message);
+
+      const errorCode = error.response?.data?.code ? Number(error.response.data.code) : null;
+
+      // If scopes are invalid, the token might be cached from before the user added the scope
+      if (errorCode === 4711 && retry) {
+        console.log('Force clearing cached Zoom access token and retrying...');
+        this.accessToken = null;
+        this.expiry = 0;
+        return this.getRecordings(userId, monthsBack, false);
+      }
+
+      if (errorCode === 4711) {
+        throw new Error(`Zoom scopes missing: ${error.response?.data?.message || ''}. Add 'cloud_recording:read:list_user_recordings' or 'cloud_recording:read:list_user_recordings:admin' scopes to your Zoom Server-to-Server OAuth App.`);
+      }
+      throw new Error('Failed to get Zoom recordings: ' + (error.response?.data?.message || error.message));
+    }
   }
 }
 
 module.exports = new ZoomService();
+

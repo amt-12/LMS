@@ -19,16 +19,42 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "inactive"
+    },
+    enrollment: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "inactive"
+    },
     phone: {
       type: String,
       default: ''
     },
+    course: {
+      type: String,
+      default: ''
+    },
+    enrolledCourses: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course'
+    }],
+    enrolledSubjects: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject'
+    }],
     address: {
       type: String,
       default: ''
     },
     tempExpiry: {
       type: Date
+    },
+    profileImage: {
+      type: String,
+      default: null
     }
   },
   { timestamps: true }

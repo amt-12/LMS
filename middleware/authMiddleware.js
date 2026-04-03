@@ -2,13 +2,23 @@ const jwt = require("jsonwebtoken");
 const { getCachedUser } = require("../middleware/cache");
 
 const protect = async (req, res, next) => {
-  const token = req.cookies.token;
+// Extract token from cookie (web) or Bearer header (mobile app)
+  let token = req.cookies?.token;
+  
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+  }
 
   if (!token) {
     return res.status(401).json({
-      message: "Not authorized"
+      message: "Not authorized - no token provided"
     });
   }
+
+  console.log('🔑 Auth:', req.cookies?.token ? 'cookie' : 'Bearer header');
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

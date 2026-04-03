@@ -92,5 +92,63 @@ async function sendOtpEmail(to, otp, name) {
   });
 }
 
-module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail };
+// Enrollment email
+async function sendEnrollmentEmail(to, name, courseName) {
+  const subject = 'Congratulations! You are officially enrolled!';
+  const message = `
+    <h3 style="color:#13294B;">Welcome to ${courseName || 'your course'}!</h3>
+    <p>Dear ${name},</p>
+    <p>We are thrilled to inform you that your enrollment has been activated by the admin.</p>
+    <p>You now have full access to all your course materials, live classes, and recorded lectures.</p>
+    <p>Log in to your mobile app to get started on your legal education journey!</p>
+  `;
+  
+  await sendEmail(to, subject, {
+    name,
+    subject,
+    message
+  });
+}
+
+// Live class start notification email
+async function sendLiveClassStartEmail(to, name, { title, joinUrl, password, startTime }) {
+  const subject = `🔴 Live Class Started: ${title}`;
+  const formattedTime = startTime
+    ? new Date(startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+    : 'Now';
+
+  const message = `
+    <h3 style="color:#13294B;">Your Live Class Has Just Started! 🎓</h3>
+    <p>Dear ${name},</p>
+    <p>Your instructor has started the live class. Join now so you don't miss anything!</p>
+    <table style="border-collapse:collapse; width:100%; margin:16px 0;">
+      <tr>
+        <td style="padding:8px; font-weight:bold; color:#13294B;">Class Title</td>
+        <td style="padding:8px;">${title}</td>
+      </tr>
+      <tr style="background:#f9f6ef;">
+        <td style="padding:8px; font-weight:bold; color:#13294B;">Started At</td>
+        <td style="padding:8px;">${formattedTime}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; font-weight:bold; color:#13294B;">Meeting Password</td>
+        <td style="padding:8px;"><strong style="font-size:18px; color:#13294B;">${password}</strong></td>
+      </tr>
+    </table>
+    <p style="text-align:center; margin:24px 0;">
+      <a href="${joinUrl}" style="background:#13294B; color:#e6c17a; padding:12px 28px; border-radius:6px; text-decoration:none; font-size:16px; font-weight:bold;">
+        ▶ Join Live Class Now
+      </a>
+    </p>
+    <p style="color:#888; font-size:13px;">You are receiving this because you are enrolled in this course. Open the mobile app or click the button above to join.</p>
+  `;
+
+  await sendEmail(to, subject, {
+    name,
+    subject,
+    message
+  });
+}
+
+module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail, sendEnrollmentEmail, sendLiveClassStartEmail };
 

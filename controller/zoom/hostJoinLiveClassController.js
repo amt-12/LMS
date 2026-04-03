@@ -31,15 +31,23 @@ const hostJoinLiveClassController = async (req, res) => {
     // Get password from class or generate if null
     let password = liveClass.password || zoomService.generatePassword();
 
-    // Generate SDK signature for host
-    const signatureData = await zoomService.generateSignature(meetingNumber, '1'); // host
+    // Fetch ZAK token for host join
+    console.log('Fetching ZAK token for host join...');
+    const zak = await zoomService.getZakToken();
+
+    // Generate signature for host (role=1)
+    console.log('Generating signature for host...');
+    const signatureData = await zoomService.generateSignature(meetingNumber, 1);
 
     res.json({
       success: true,
       data: {
-        ...signatureData,
+        meetingNumber,
+        zak,
         password,
-        role: 1 // host
+        role: 1, // host
+        sdkKey: signatureData.sdkKey,
+        signature: signatureData.signature,
       }
     });
   } catch (error) {
