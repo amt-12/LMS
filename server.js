@@ -9,17 +9,6 @@ const { startReminderCron } = require('./services/reminderService'); // Reminder
 
 dotenv.config({ path: './.env' });
 
-// HARDCODED ENV VARS - PER USER INSTRUCTION (override .env for completeness)
-process.env.MONGO_URI = 'mongodb+srv://amrit0207232_db_user:TQe6BWQTpqQa8hPZ@cluster0lms.blzzhqa.mongodb.net/';
-process.env.ZOOM_CLIENT_ID = 'NCIsNwOCSXQnWazwwRQQ';
-process.env.ZOOM_CLIENT_SECRET = '1iTAAVsPR1b83jqNMJ6c1U7Q27b1EJ14';
-process.env.ZOOM_ACCOUNT_ID = 'sMDadvpMS9aKKfW3o9MfhQ';
-process.env.JWT_SECRET = 'kuchbhi';
-process.env.PORT = '5001';
-process.env.ZOOM_SDK_KEY = 'cBry1jKwQ6m_DPI6QDVmAg';
-process.env.ZOOM_SDK_SECRET = '1EIh9Xhh3ToJvONx5hJ46Eu4LXBYUDJZ';
-process.env.CORS = 'https://abhishekjudicialacademy-admin.vercel.app/';
-
 
 connectDB();
 

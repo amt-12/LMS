@@ -109,27 +109,28 @@ const getMaterials = async (req, res) => {
 const getDownloadUrl = async (req, res) => {
   try {
     const { id } = req.params;
-    const { watermark, studentName } = req.query;
-
     const material = await StudyMaterial.findById(id);
     if (!material) {
       return res.status(404).json({ error: 'Material not found' });
     }
 
-    const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
-    const { PDFDocument, rgb, degrees } = require('pdf-lib');
-    const s3Client = new S3Client({
-      region: process.env.AWS_REGION || 'ap-south-1',
-      credentials: {
-        accessKeyId: "AKIAXYKJUX53D33EHRF5",
-        secretAccessKey: "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"
-      }
-    });
+    // Auto-detect: students get watermark, others get clean PDF
+    const isStudent = req.user?.role === 'student';
+    const studentName = req.user?.name || 'Student';
 
-    // Check if watermark needed
-    if (watermark === 'true' && studentName) {
-      console.log(`Applying watermark for student: ${studentName} on ${material.fileName}`);
+    if (isStudent) {
+      console.log(`✅ Applying diagonal watermark for student "${studentName}" on ${material.fileName}`);
       
+      const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+      const { PDFDocument, rgb, degrees } = require('pdf-lib');
+      const s3Client = new S3Client({
+        region: process.env.AWS_REGION || 'ap-south-1',
+        credentials: {
+          accessKeyId: "AKIAXYKJUX53D33EHRF5",
+          secretAccessKey: "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"
+        }
+      });
+
       // Get PDF buffer from S3
       const getObjectCommand = new GetObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET || 'lms-aja',
@@ -143,49 +144,48 @@ const getDownloadUrl = async (req, res) => {
       const pages = pdfDoc.getPages();
       const helveticaFont = await pdfDoc.embedFont('Helvetica');
 
-      // Watermark each page - Full page diagonal bottom-left to top-right
+      // Watermark each page - Bottom-left → diagonal → top-right (45° ✓)
       pages.forEach((page) => {
         const { width, height } = page.getSize();
         const watermarkText = `Student: ${studentName}`;
         const fontSize = 45;
         
-        // Main full-page diagonal (bottom-left to top-right)
+        // 1️⃣ Main diagonal: Bottom-left origin → top-right direction
         page.drawText(watermarkText, {
           x: 50,
-          y: height,
+          y: height - 50,  // Bottom-left start
           size: fontSize,
-          angle: degrees(45),
+          angle: degrees(45),  // Diagonal up-right
           color: rgb(0.7, 0.7, 0.7),
         });
         
-        // Secondary diagonal offset for coverage
+        // 2️⃣ Secondary coverage
         page.drawText(watermarkText, {
-          x: width - 200,
-          y: 50,
+          x: width - 250,
+          y: 80,
           size: fontSize,
           angle: degrees(45),
           color: rgb(0.8, 0.8, 0.8),
         });
         
-        // Third instance for complete coverage
+        // 3️⃣ Center reinforcement 
         page.drawText(watermarkText, {
-          x: width / 2 - 100,
+          x: width / 2 - 120,
           y: height / 2,
-          size: fontSize * 0.8,
+          size: fontSize * 0.85,
           angle: degrees(45),
           color: rgb(0.75, 0.75, 0.75),
         });
       });
 
-      // Save modified PDF
+      // Stream watermarked PDF
       const watermarkedPdfBytes = await pdfDoc.save();
-
-      // Stream response
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${material.fileName.replace('.pdf', '_watermarked.pdf')}"`);
       res.send(watermarkedPdfBytes);
     } else {
-      // Original for admins/teachers
+      // 🚫 Non-students: Clean original PDF via signed S3 URL
+      console.log(`📄 Admin/Teacher "${req.user?.name || 'Guest'}" - serving clean PDF`);
       const { generateSignedUrl } = require('../services/s3Service');
       const signedUrl = await generateSignedUrl(material.s3Key);
       res.json({ downloadUrl: signedUrl });

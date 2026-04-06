@@ -239,7 +239,7 @@ class ZoomService {
    * @param {boolean} retry - Allow retrying once on scope error
    * @returns {Array} List of recording meetings
    */
-  async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
+async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
     try {
       const accessToken = await this.getAccessToken();
 
@@ -296,6 +296,52 @@ class ZoomService {
       throw new Error('Failed to get Zoom recordings: ' + (error.response?.data?.message || error.message));
     }
   }
+
+  /**
+   * Get meeting details by ID
+   * @param {string} meetingId - Zoom meeting ID
+   * @returns {object} meeting details
+   */
+  async getMeetingDetails(meetingId) {
+    try {
+      const accessToken = await this.getAccessToken();
+      const response = await axios.get(`${this.apiUrl}/meetings/${meetingId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Zoom getMeetingDetails error:', error.response?.data || error.message);
+      throw new Error('Failed to get meeting details: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
+  /**
+   * Update meeting password (set to false to remove passcode requirement)
+   * @param {string} meetingId - Zoom meeting ID
+   * @param {boolean|string} password - false to remove, string for new password
+   * @returns {object} update result
+   */
+  async updateMeetingPassword(meetingId, password = false) {
+    try {
+      const accessToken = await this.getAccessToken();
+      await axios.patch(`${this.apiUrl}/meetings/${meetingId}`, {
+        password: password,
+        settings: {
+          password: password
+        }
+      }, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return { success: true, meetingId, password: password };
+    } catch (error) {
+      console.error('Zoom updateMeetingPassword error:', error.response?.data || error.message);
+      throw new Error('Failed to update meeting password: ' + (error.response?.data?.message || error.message));
+    }
+  }
+
 }
 
 module.exports = new ZoomService();

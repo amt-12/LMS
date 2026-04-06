@@ -13,6 +13,7 @@ const { startLiveClassController } = require('../../controller/zoom/startLiveCla
 const { endLiveClassController } = require('../../controller/zoom/endLiveClassController');
 const { updateLiveClassController } = require('../../controller/zoom/updateLiveClassController');
 const { deleteLiveClassController } = require('../../controller/zoom/deleteLiveClassController');
+const { recordingProxyController } = require('../../controller/zoom/recordingProxyController');
 
 // Signature for all
 router.post('/signature', authMiddleware, signatureController);
@@ -23,6 +24,9 @@ router.get('/', authMiddleware, getLiveClassesController);
 
 // Recordings endpoint
 router.get('/recordings/all', authMiddleware, getRecordingsController);
+
+// Proxy stream for video playback (no auth needed for playback after login check, but keep auth for safety)
+router.get('/recordings/proxy', recordingProxyController); // No auth for playback stream
 
 // Public/student: get single
 router.get('/:id', getLiveClassController);

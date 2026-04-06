@@ -8,7 +8,7 @@ const updateStudent = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { name, email, phone, address, status, enrollment, enrolledCourses, enrolledSubjects } = req.body;
+const { name, email, phone, address, status, enrollment, enrolledCourses, enrolledSubjects, batch } = req.body;
 
     // Check if email already exists (not current user)
     if (email) {
@@ -29,6 +29,7 @@ const updateStudent = async (req, res) => {
       name,
       phone: phone || '',
       address: address || '',
+      ...(batch !== undefined && { batch }),
       ...(status !== undefined && { isTemp: status === 'Inactive' }),
       ...(enrollment !== undefined && { enrollment }),
       ...(enrolledCourses !== undefined && { enrolledCourses }),
@@ -39,7 +40,7 @@ const updateStudent = async (req, res) => {
       id,
       updateData,
       { returnDocument: 'after', runValidators: true }
-    ).select('name email phone address isTemp createdAt enrollment course');
+    ).select('name email phone address batch isTemp createdAt enrollment course');
 
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
@@ -65,6 +66,7 @@ const updateStudent = async (req, res) => {
         email: student.email,
         phone: student.phone,
         address: student.address,
+        batch: student.batch,
         status: student.isTemp ? 'Inactive' : 'Active',
         enrollment: student.enrollment,
         course: student.course

@@ -49,6 +49,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    batch: {
+      type: String,
+      default: ''
+    },
     tempExpiry: {
       type: Date
     },
@@ -64,3 +68,4 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ email: 1, isTemp: 1 });
 
 module.exports = mongoose.model("User", userSchema);
+

@@ -13,9 +13,9 @@ const getStudents = async (req, res) => {
         { deletedAt: { $exists: false } }
       ]
     })
-      .populate('enrolledCourses', 'title')
+    .populate('enrolledCourses', 'title')
       .populate('enrolledSubjects', 'title')
-      .select('name email phone address isTemp createdAt enrollment course enrolledCourses enrolledSubjects')
+      .select('name email phone address batch isTemp createdAt enrollment course enrolledCourses enrolledSubjects')
       .lean()
       .sort({ createdAt: -1 });
 
@@ -27,6 +27,7 @@ const getStudents = async (req, res) => {
       email: student.email,
       phone: student.phone,
       address: student.address,
+      batch: student.batch || '',
       status: student.isTemp ? 'Inactive' : 'Active',
       enrollment: student.enrollment || 'inactive',
       course: student.course,

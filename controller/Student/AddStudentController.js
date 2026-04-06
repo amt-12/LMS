@@ -13,7 +13,7 @@ const generateTempPassword = () => {
 
 const addStudent = async (req, res) => {
   try {
-    const { name, email, phone, address, status } = req.body;
+const { name, email, phone, address, status, batch } = req.body;
     
     // Check if admin
     if (req.user.role !== 'admin') {
@@ -30,12 +30,19 @@ const addStudent = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
+    // Auto-generate batch if not provided
+    const currentBatch = batch || new Date().toLocaleDateString('en-US', { 
+      month: 'long', 
+      year: 'numeric' 
+    });
+
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
       phone: phone || '',
       address: address || '',
+      batch: currentBatch,
       role: 'student',
       isTemp: status === 'Inactive',
       tempExpiry: status === 'Inactive' ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null,
@@ -43,7 +50,7 @@ const addStudent = async (req, res) => {
 
     // Send welcome email
     const appLink = 'https://play.google.com/store/apps/details?id=com.abhisheksacademy.lmsapp';
-    const dashboardLink = 'http://localhost:8080/login';
+    const dashboardLink = 'http://localhost:8080/';
     sendStudentWelcomeEmail(email, name, tempPassword, appLink, dashboardLink);
 
     const safeUser = {
@@ -52,6 +59,7 @@ const addStudent = async (req, res) => {
       email: user.email,
       phone: user.phone,
       address: user.address,
+      batch: user.batch,
       role: user.role,
       status: status || 'Active',
       createdAt: user.createdAt,
