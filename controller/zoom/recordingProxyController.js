@@ -1,80 +1,77 @@
-const https = require('https');
-const url = require('url');
+const axios = require('axios');
+const zoomService = require('../../services/zoomService');
 
 const recordingProxyController = async (req, res) => {
-  console.log('[Proxy] Request headers:', Object.keys(req.headers).slice(0,5).join(', '));
-  console.log('[Proxy] video_url param:', !!req.query.video_url ? 'present' : 'MISSING');
   try {
     const { video_url } = req.query;
-    
+
     if (!video_url) {
       return res.status(400).json({ success: false, message: 'video_url query param required' });
     }
 
-    console.log(`[Proxy] Streaming: ${video_url.substring(0, 50)}...`);
+    console.log(`[Proxy] Streaming: ${video_url.substring(0, 80)}...`);
 
-    // Parse URL for headers
-    const parsedUrl = new URL(video_url);
-    const options = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || 443,
-      path: parsedUrl.pathname + parsedUrl.search,
-      method: 'GET',
-      timeout: 5000, // 5s timeout
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
-        ...req.headers['range'] ? { 'Range': req.headers['range'] } : {},
-      }
+    // Get a fresh Zoom OAuth access token
+    const accessToken = await zoomService.getAccessToken();
+
+    // Append access_token to the Zoom download URL
+    const separator = video_url.includes('?') ? '&' : '?';
+    const authenticatedUrl = `${video_url}${separator}access_token=${accessToken}`;
+
+    // Build request headers
+    const headers = {};
+    if (req.headers['range']) {
+      headers['Range'] = req.headers['range'];
+    }
+
+    // Use axios streaming — it follows redirects automatically
+    const zoomRes = await axios.get(authenticatedUrl, {
+      responseType: 'stream',
+      headers,
+      maxRedirects: 5,
+      timeout: 30000, // 30s timeout for large files
+    });
+
+    console.log('[Proxy] Zoom response:', zoomRes.status,
+      'content-length:', zoomRes.headers['content-length'] || 'unknown',
+      'content-type:', zoomRes.headers['content-type']
+    );
+
+    // Forward relevant response headers
+    const responseHeaders = {
+      'Content-Type': zoomRes.headers['content-type'] || 'video/mp4',
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'public, max-age=3600',
     };
 
-    https.get(options, (zoomRes) => {
-      console.log('[Proxy] Zoom response:', zoomRes.statusCode, 
-        'content-length:', zoomRes.headers['content-length'] || 'undefined',
-        'content-type:', zoomRes.headers['content-type'],
-        'transfer-encoding:', zoomRes.headers['transfer-encoding']
-      );
-      
-      // Dynamic headers from Zoom response - FIXED content-length handling
-      const headers = {
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'public, max-age=3600',
-        ...zoomRes.headers // Forward ALL headers including content-length
-      };
-      
-      // Remove ONLY hop-by-hop headers
-      const hopByHop = ['connection', 'keep-alive', 'proxy-authenticate', 
-                        'proxy-authorization', 'te', 'trailers', 'upgrade'];
-      hopByHop.forEach(h => delete headers[h]);
-      
-      // Ensure video Content-Type
-      headers['Content-Type'] = zoomRes.headers['content-type'] || 'video/mp4';
-      
-      // SUPPORT CHUNKED TRANSFER (for dynamic content-length: undefined)
-      if (zoomRes.headers['transfer-encoding'] === 'chunked' || 
-          !zoomRes.headers['content-length']) {
-        headers['Transfer-Encoding'] = 'chunked';
-        console.log('[Proxy] Using chunked transfer encoding');
+    if (zoomRes.headers['content-length']) {
+      responseHeaders['Content-Length'] = zoomRes.headers['content-length'];
+    }
+    if (zoomRes.headers['content-range']) {
+      responseHeaders['Content-Range'] = zoomRes.headers['content-range'];
+    }
+
+    res.writeHead(zoomRes.status, responseHeaders);
+
+    // Pipe the video stream to the client
+    zoomRes.data.pipe(res);
+
+    zoomRes.data.on('error', (err) => {
+      console.error('[Proxy] Stream error:', err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Stream error' });
       }
-      
-      res.writeHead(zoomRes.statusCode, headers);
-      
-      zoomRes.pipe(res);
-
-      zoomRes.on('error', (err) => {
-        console.error('[Proxy] Zoom response error:', err);
-        if (!res.headersSent) {
-          res.status(500).json({ success: false, message: 'Stream error' });
-        }
-      });
-
-    }).on('error', (err) => {
-      console.error('[Proxy] HTTPS get error:', err);
-      res.status(502).json({ success: false, message: 'Failed to fetch video from Zoom' });
     });
 
   } catch (error) {
-    console.error('[Proxy Controller] Error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('[Proxy Controller] Error:', error.response?.status, error.message);
+    if (!res.headersSent) {
+      res.status(502).json({
+        success: false,
+        message: 'Failed to stream video from Zoom',
+        error: error.message,
+      });
+    }
   }
 };
 
