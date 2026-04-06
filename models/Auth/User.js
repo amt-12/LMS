@@ -59,6 +59,18 @@ const userSchema = new mongoose.Schema(
     profileImage: {
       type: String,
       default: null
+    },
+    contentViolations: {
+      type: Number,
+      default: 0
+    },
+    recordingAccessBlocked: {
+      type: Boolean,
+      default: false
+    },
+    lastViolationAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }

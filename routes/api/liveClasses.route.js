@@ -26,7 +26,7 @@ router.get('/', authMiddleware, getLiveClassesController);
 router.get('/recordings/all', authMiddleware, getRecordingsController);
 
 // Proxy stream for video playback (no auth needed for playback after login check, but keep auth for safety)
-router.get('/recordings/proxy', recordingProxyController); // No auth for playback stream
+router.get('/recordings/proxy', authMiddleware, recordingProxyController);
 
 // Public/student: get single
 router.get('/:id', getLiveClassController);

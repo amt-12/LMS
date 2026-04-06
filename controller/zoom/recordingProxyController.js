@@ -1,8 +1,21 @@
 const axios = require('axios');
 const zoomService = require('../../services/zoomService');
+const User = require('../../models/Auth/User');
 
 const recordingProxyController = async (req, res) => {
   try {
+    // Check if student is blocked from recording access
+    const userId = req.user?.userId || req.user?._id;
+    if (userId) {
+      const user = await User.findById(userId).select('role recordingAccessBlocked');
+      if (user && user.role === 'student' && user.recordingAccessBlocked) {
+        return res.status(403).json({
+          success: false,
+          message: 'Your recording access has been blocked due to content protection violations. Contact admin.',
+        });
+      }
+    }
+
     const { video_url } = req.query;
 
     if (!video_url) {

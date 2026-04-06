@@ -10,6 +10,7 @@ const studyMaterialsRoutes = require("./studyMaterials.route");
 const testRoutes = require("./test.route");
 
 const liveClassRoutes = require("./liveClasses.route");
+const contentProtectionRoutes = require("./contentProtection.route");
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.use("/subjects", subjectRoutes);
 router.use("/live-classes", liveClassRoutes);
 router.use("/demo-classes", demoClassRoutes);
 router.use("/notifications", notificationsRoutes);
+router.use("/content-protection", contentProtectionRoutes);
 
 module.exports = router;

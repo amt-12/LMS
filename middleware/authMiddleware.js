@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const { getCachedUser } = require("../middleware/cache");
 
 const protect = async (req, res, next) => {
-// Extract token from cookie (web) or Bearer header (mobile app)
+// Extract token from cookie (web), Bearer header (mobile app), or query param (video proxy)
   let token = req.cookies?.token;
   
   if (!token) {
@@ -10,6 +10,11 @@ const protect = async (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
     }
+  }
+
+  // Fallback: query param (used by <video src="...?token=xxx"> for proxy streaming)
+  if (!token && req.query.token) {
+    token = req.query.token;
   }
 
   if (!token) {
