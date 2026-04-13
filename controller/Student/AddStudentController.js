@@ -13,8 +13,8 @@ const generateTempPassword = () => {
 
 const addStudent = async (req, res) => {
   try {
-const { name, email, phone, address, status, batch } = req.body;
-    
+    const { name, email, phone, address, status, batch } = req.body;
+
     // Check if admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access only' });
@@ -31,9 +31,9 @@ const { name, email, phone, address, status, batch } = req.body;
     const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
     // Auto-generate batch if not provided
-    const currentBatch = batch || new Date().toLocaleDateString('en-US', { 
-      month: 'long', 
-      year: 'numeric' 
+    const currentBatch = batch || new Date().toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric'
     });
 
     const user = await User.create({
@@ -50,7 +50,7 @@ const { name, email, phone, address, status, batch } = req.body;
 
     // Send welcome email
     const appLink = 'https://play.google.com/store/apps/details?id=com.abhisheksacademy.lmsapp';
-    const dashboardLink = 'http://localhost:8080/';
+    const dashboardLink = 'https://abhishekjudicialacademy-admin.vercel.app/demo-classes/';
     sendStudentWelcomeEmail(email, name, tempPassword, appLink, dashboardLink);
 
     const safeUser = {
