@@ -13,13 +13,13 @@ const transporter = nodemailer.createTransport({
 // Function to compile template with data
 function compileTemplate(templatePath, data = {}) {
   let template = fs.readFileSync(path.join(__dirname, '../templates/email-template.html'), 'utf8');
-  
+
   // Replace placeholders
   Object.keys(data).forEach(key => {
     const regex = new RegExp(`{{${key}}}`, 'g');
     template = template.replace(regex, data[key] || '');
   });
-  
+
   return template;
 }
 
@@ -27,14 +27,14 @@ function compileTemplate(templatePath, data = {}) {
 async function sendEmail(to, subject, data = {}) {
   try {
     const html = compileTemplate(null, data);
-    
+
     await transporter.sendMail({
-      from: `"Legal Compass LMS" <${process.env.SMTP_EMAIL || 'noreply@lms.com'}>`,
+      from: `"Abhishek's Judicial Academy" <${process.env.SMTP_EMAIL || 'noreply@lms.com'}>`,
       to,
       subject,
       html
     });
-    
+
     console.log(`Email sent successfully to ${to}`);
   } catch (error) {
     console.error(`Failed to send email to ${to}:`, error.message);
@@ -44,11 +44,11 @@ async function sendEmail(to, subject, data = {}) {
 
 // Welcome email wrapper (for register/login)
 async function sendWelcomeEmail(to, name, action = 'Welcome') {
-  const subject = action === 'Register' ? 'Welcome to Legal Compass LMS!' : 'Welcome Back to LMS!';
-  const message = action === 'Register' 
+  const subject = action === 'Register' ? "Welcome to Abhishek's Judicial Academy!" : 'Welcome Back to LMS!';
+  const message = action === 'Register'
     ? 'We will connect you shortly, before that enjoy demo class. Watch this: <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Demo Legal Class</a>'
-    : 'Welcome back! Thank you for logging into Legal Compass LMS. Continue your legal education with our comprehensive courses.';
-  
+    : "Welcome back! Thank you for logging into Abhishek's Judicial Academy.Continue your legal education with our comprehensive courses.";
+
   await sendEmail(to, subject, {
     name,
     subject,
@@ -70,7 +70,7 @@ async function sendStudentWelcomeEmail(to, name, tempPassword, appLink, dashboar
     <p>• <a href="${dashboardLink}" style="color:#e6c17a;">🌐 Access Website Dashboard</a></p>
     <p>Start your learning journey with our premium legal courses!</p>
   `;
-  
+
   await sendEmail(to, subject, {
     name,
     subject,
@@ -80,7 +80,7 @@ async function sendStudentWelcomeEmail(to, name, tempPassword, appLink, dashboar
 
 // OTP email
 async function sendOtpEmail(to, otp, name) {
-  await sendEmail(to, 'Legal Compass LMS - Your OTP Code', {
+  await sendEmail(to, "Abhishek's Judicial Academy - Your OTP Code", {
     name,
     subject: 'Your OTP Code',
     message: `
@@ -102,7 +102,7 @@ async function sendEnrollmentEmail(to, name, courseName) {
     <p>You now have full access to all your course materials, live classes, and recorded lectures.</p>
     <p>Log in to your mobile app to get started on your legal education journey!</p>
   `;
-  
+
   await sendEmail(to, subject, {
     name,
     subject,
@@ -122,7 +122,7 @@ async function sendUnenrollmentEmail(to, name, courseName) {
     <p>Thank you for your understanding.</p>
     <p>Best regards,<br>Abhishek's Academy LMS Team</p>
   `;
-  
+
   await sendEmail(to, subject, {
     name,
     subject,
