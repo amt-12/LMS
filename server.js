@@ -20,7 +20,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: "https://abhishekjudicialacademy-admin.vercel.app/demo-classes",
+  origin: "https://abhishekjudicialacademy-admin.vercel.app",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));

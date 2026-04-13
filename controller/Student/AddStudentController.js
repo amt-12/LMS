@@ -50,7 +50,7 @@ const addStudent = async (req, res) => {
 
     // Send welcome email
     const appLink = 'https://play.google.com/store/apps/details?id=com.abhisheksacademy.lmsapp';
-    const dashboardLink = 'https://abhishekjudicialacademy-admin.vercel.app/demo-classes/';
+    const dashboardLink = 'https://abhishekjudicialacademy-admin.vercel.app/';
     sendStudentWelcomeEmail(email, name, tempPassword, appLink, dashboardLink);
 
     const safeUser = {
