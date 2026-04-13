@@ -110,6 +110,26 @@ async function sendEnrollmentEmail(to, name, courseName) {
   });
 }
 
+// Unenrollment email
+async function sendUnenrollmentEmail(to, name, courseName) {
+  const subject = 'Notice: Your enrollment has been updated';
+  const message = `
+    <h3 style="color:#d32f2f;">Enrollment Status Update</h3>
+    <p>Dear ${name},</p>
+    <p>This is to inform you that your enrollment status for ${courseName || 'your course(s)'} has been updated to inactive by the admin.</p>
+    <p>You will no longer have access to course materials, live classes, and recorded lectures until reactivation.</p>
+    <p>If you have any questions or need assistance, please contact your course administrator.</p>
+    <p>Thank you for your understanding.</p>
+    <p>Best regards,<br>Abhishek's Academy LMS Team</p>
+  `;
+  
+  await sendEmail(to, subject, {
+    name,
+    subject,
+    message
+  });
+}
+
 // Live class start notification email
 async function sendLiveClassStartEmail(to, name, { title, joinUrl, password, startTime }) {
   const subject = `🔴 Live Class Started: ${title}`;
@@ -150,5 +170,5 @@ async function sendLiveClassStartEmail(to, name, { title, joinUrl, password, sta
   });
 }
 
-module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail, sendEnrollmentEmail, sendLiveClassStartEmail };
+module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail, sendEnrollmentEmail, sendUnenrollmentEmail, sendLiveClassStartEmail };
 

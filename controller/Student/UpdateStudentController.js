@@ -1,5 +1,5 @@
 const User = require("../../models/Auth/User");
-const { sendEnrollmentEmail } = require("../../services/emailService");
+const { sendEnrollmentEmail, sendUnenrollmentEmail } = require("../../services/emailService");
 
 const updateStudent = async (req, res) => {
   try {
@@ -30,31 +30,51 @@ const { name, email, phone, address, status, enrollment, enrolledCourses, enroll
       phone: phone || '',
       address: address || '',
       ...(batch !== undefined && { batch }),
-      ...(status !== undefined && { isTemp: status === 'Inactive' }),
-      ...(enrollment !== undefined && { enrollment }),
+      
+      // Sync isTemp with enrollment
+      ...(enrollment !== undefined && { 
+        enrollment,
+        isTemp: enrollment === 'inactive'
+      }),
+      
       ...(enrolledCourses !== undefined && { enrolledCourses }),
       ...(enrolledSubjects !== undefined && { enrolledSubjects }),
     };
+
+    // Fetch original enrollment status before update
+    const originalStudent = await User.findById(id).select('enrollment enrolledCourses enrolledSubjects');
+    if (!originalStudent) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
 
     const student = await User.findByIdAndUpdate(
       id,
       updateData,
       { returnDocument: 'after', runValidators: true }
-    ).select('name email phone address batch isTemp createdAt enrollment course');
+    ).select('name email phone address batch isTemp createdAt enrollment course enrolledCourses enrolledSubjects');
 
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    if (enrollment === 'active') {
+    // Check if enrollment status changed
+    if (originalStudent.enrollment !== student.enrollment) {
       try {
-        const studentWithCourses = await User.findById(id).populate('enrolledCourses', 'title');
-        const courseNames = studentWithCourses.enrolledCourses && studentWithCourses.enrolledCourses.length > 0
-          ? studentWithCourses.enrolledCourses.map(c => c.title).join(', ')
-          : student.course || 'the selected programs';
-        await sendEnrollmentEmail(student.email, student.name, courseNames);
+        // Populate enrolled courses/subjects for email
+        const studentWithCourses = await User.findById(id).populate('enrolledCourses', 'title').populate('enrolledSubjects', 'title');
+        const courseNames = studentWithCourses.enrolledCourses?.map(c => c.title).join(', ') || '';
+        const subjectNames = studentWithCourses.enrolledSubjects?.map(s => s.title).join(', ') || '';
+        const fullCourseInfo = courseNames || subjectNames || student.course || 'your program(s)';
+
+        if (student.enrollment === 'active') {
+          await sendEnrollmentEmail(student.email, student.name, fullCourseInfo);
+          console.log(`Enrollment activation email sent to ${student.email}`);
+        } else if (student.enrollment === 'inactive') {
+          await sendUnenrollmentEmail(student.email, student.name, fullCourseInfo);
+          console.log(`Unenrollment notice email sent to ${student.email}`);
+        }
       } catch (e) {
-        console.error('Failed to send enrollment email', e);
+        console.error('Failed to send enrollment/unenrollment email:', e);
       }
     }
 
