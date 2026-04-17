@@ -4,7 +4,9 @@ const path = require('path');
 
 console.log('Initializing email transporter with user:', process.env.SMTP_EMAIL || 'fallback');
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  port: 465,
+  host: "smtp.gmail.com",
+  secure: true,
   auth: {
     user: process.env.SMTP_EMAIL || 'amrit0207232@gmail.com',
     pass: process.env.SMTP_PASS || 'jjohknqntwuhzqye'
@@ -30,7 +32,7 @@ function compileTemplate(templatePath, data = {}) {
 
 async function sendEmail(to, subject, data = {}) {
   console.log(`🔄 Attempting to send email to: ${to}, subject: ${subject}`);
-  console.log('SMTP user:', process.env.SMTP_EMAIL || 'fallback used');
+  console.log('SMTP user:', process.env.SMTP_EMAIL || 'amrit0207232@gmail.com');
   
   try {
     await transporter.verify().catch(err => {
