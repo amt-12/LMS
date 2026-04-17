@@ -29,11 +29,11 @@ const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check cache first
-    const cachedUser = await getCachedUser(decoded.userId);
-    if (cachedUser) {
-      req.user = cachedUser;
-      return next();
-    }
+    // const cachedUser = await getCachedUser(decoded.userId);
+    // if (cachedUser) {
+    //   req.user = cachedUser;
+    //   return next();
+    // }
     
     // Cache miss - will be populated by controller/service if needed
     req.user = decoded;
