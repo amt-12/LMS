@@ -27,6 +27,7 @@ const getStudents = async (req, res) => {
       email: student.email,
       phone: student.phone,
       address: student.address,
+      isTemp:student.isTemp,
       batch: student.batch || '',
       status: student.isTemp ? 'Inactive' : 'Active',
       enrollment: student.enrollment || 'inactive',

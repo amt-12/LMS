@@ -1,4 +1,5 @@
 const LiveClass = require('../../models/LiveClass');
+const mongoose = require('mongoose');
 const zoomService = require('../../services/zoomService');
 
 const updateLiveClassController = async (req, res) => {
@@ -6,7 +7,17 @@ const updateLiveClassController = async (req, res) => {
     const { id } = req.params;
     const { title, subjectId, startTime, duration } = req.body;
 
-    const liveClass = await LiveClass.findById(id);
+    let liveClass;
+    try {
+      liveClass = await LiveClass.findById(id);
+    } catch (castError) {
+      if (castError.name === 'CastError') {
+        liveClass = await LiveClass.findOne({ slug: id });
+      } else {
+        throw castError;
+      }
+    }
+    
     if (!liveClass) {
       return res.status(404).json({ success: false, message: 'Live class not found' });
     }
@@ -44,7 +55,8 @@ const updateLiveClassController = async (req, res) => {
       // Continue — still update DB even if Zoom sync partially fails
     }
 
-    const updated = await LiveClass.findByIdAndUpdate(id, updates, { new: true })
+    const updatedId = mongoose.Types.ObjectId.isValid(id) ? id : liveClass._id;
+    const updated = await LiveClass.findByIdAndUpdate(updatedId || liveClass._id, updates, { new: true })
       .populate({ path: 'subjectId', populate: { path: 'courseId', select: 'title' } });
 
     res.status(200).json({ success: true, data: updated });

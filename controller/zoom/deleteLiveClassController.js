@@ -1,11 +1,22 @@
 const LiveClass = require('../../models/LiveClass');
+const mongoose = require('mongoose');
 const zoomService = require('../../services/zoomService');
 
 const deleteLiveClassController = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const liveClass = await LiveClass.findById(id);
+    let liveClass;
+    try {
+      liveClass = await LiveClass.findById(id);
+    } catch (castError) {
+      if (castError.name === 'CastError') {
+        liveClass = await LiveClass.findOne({ slug: id });
+      } else {
+        throw castError;
+      }
+    }
+    
     if (!liveClass) {
       return res.status(404).json({ success: false, message: 'Live class not found' });
     }
@@ -25,7 +36,8 @@ const deleteLiveClassController = async (req, res) => {
       // Still delete from DB regardless
     }
 
-    await LiveClass.findByIdAndDelete(id);
+    const deleteId = mongoose.Types.ObjectId.isValid(id) ? id : liveClass._id;
+    await LiveClass.findByIdAndDelete(deleteId || liveClass._id);
 
     res.status(200).json({ success: true, message: 'Live class deleted successfully' });
   } catch (error) {

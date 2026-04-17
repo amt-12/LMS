@@ -1,11 +1,22 @@
 const LiveClass = require('../../models/LiveClass');
+const mongoose = require('mongoose');
 const zoomService = require('../../services/zoomService');
 
 const hostJoinLiveClassController = async (req, res) => {
   try {
     const { id: liveClassId } = req.params;
 
-    const liveClass = await LiveClass.findById(liveClassId).populate('createdBy', 'name');
+    let liveClass;
+    try {
+      liveClass = await LiveClass.findById(liveClassId).populate('createdBy', 'name');
+    } catch (castError) {
+      if (castError.name === 'CastError') {
+        liveClass = await LiveClass.findOne({ slug: liveClassId }).populate('createdBy', 'name');
+      } else {
+        throw castError;
+      }
+    }
+    
     if (!liveClass) {
       return res.status(404).json({
         success: false,

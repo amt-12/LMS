@@ -6,6 +6,12 @@ const liveClassSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  slug: {
+    type: String,
+    unique: true,
+    lowercase: true,
+    index: true
+  },
   subjectId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Subject',
@@ -50,4 +56,3 @@ const liveClassSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('LiveClass', liveClassSchema);
-

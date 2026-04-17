@@ -104,15 +104,31 @@ const updateProfile = async (req, res) => {
 const deleteProfile = async (req, res) => {
   try {
     const userId = req.user.userId || req.user._id;
-    const user = await User.findByIdAndUpdate(userId, {
-      deletedAt: new Date(),
-    });
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({ message: "Profile deleted successfully" });
+    // Delete profile image from S3 if exists
+    if (user.profileImage) {
+      await s3Service.deleteFromS3(user.profileImage).catch(console.error);
+    }
+
+    // Hard delete from DB
+    await User.findByIdAndDelete(userId);
+
+    // Clear all user-related cache
+    const cache = require('../../middleware/cache');
+    cache.invalidateUserCache(userId);
+    cache.userCache.del(`recentUsers:${user.email}`); // Clear email cache if exists
+    Object.keys(cache.userCache.keys()).forEach(key => {
+      if (key.includes(userId) || key.includes(user.email)) {
+        cache.userCache.del(key);
+      }
+    });
+
+    res.json({ message: "Profile permanently deleted successfully" });
   } catch (error) {
     console.error("Delete profile error:", error);
     res.status(500).json({ error: "Server error deleting profile" });
@@ -134,20 +150,17 @@ const uploadProfileImage = async (req, res) => {
     const maxSize = 5 * 1024 * 1024; // 5MB
 
     if (!allowedTypes.includes(file.mimetype)) {
-      unlinkSync(file.path);
       return res
         .status(400)
         .json({ error: "Invalid file type. Only JPEG/PNG allowed" });
     }
 
     if (file.size > maxSize) {
-      unlinkSync(file.path);
       return res.status(400).json({ error: "File too large. Max 5MB" });
     }
 
     const user = await User.findById(userId);
     if (!user || user.deletedAt) {
-      unlinkSync(file.path);
       return res.status(404).json({ error: "User not found" });
     }
 

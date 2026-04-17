@@ -1,4 +1,5 @@
 const LiveClass = require('../../models/LiveClass');
+const slugify = require('slugify');
 const zoomService = require('../../services/zoomService');
 
 const createLiveClassController = async (req, res) => {
@@ -13,6 +14,7 @@ const createLiveClassController = async (req, res) => {
 
     const liveClass = new LiveClass({
       title,
+      slug: slugify(title.toLowerCase()),
       subjectId,
       zoomMeetingId: zoomMeeting.meetingId,
       joinUrl: zoomMeeting.joinUrl,
@@ -39,4 +41,3 @@ const createLiveClassController = async (req, res) => {
 };
 
 module.exports = { createLiveClassController };
-

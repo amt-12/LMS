@@ -1,8 +1,22 @@
 const LiveClass = require('../../models/LiveClass');
+const mongoose = require('mongoose');
 
 const getLiveClassController = async (req, res) => {
   try {
-    const liveClass = await LiveClass.findById(req.params.id).populate('createdBy', 'name');
+    let liveClass;
+    const id = req.params.id;
+    
+    try {
+      liveClass = await LiveClass.findById(id).populate('createdBy', 'name');
+    } catch (castError) {
+      if (castError.name === 'CastError') {
+        // Try slug lookup
+        liveClass = await LiveClass.findOne({ slug: id }).populate('createdBy', 'name');
+      } else {
+        throw castError;
+      }
+    }
+    
     if (!liveClass) {
       return res.status(404).json({ success: false, message: 'Live class not found' });
     }
@@ -25,4 +39,3 @@ const getLiveClassController = async (req, res) => {
 };
 
 module.exports = { getLiveClassController };
-

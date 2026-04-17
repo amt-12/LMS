@@ -1,11 +1,22 @@
 const LiveClass = require('../../models/LiveClass');
+const mongoose = require('mongoose');
 const zoomService = require('../../services/zoomService');
 
 const endLiveClassController = async (req, res) => {
   try {
     const { id: liveClassId } = req.params;
 
-    const liveClass = await LiveClass.findById(liveClassId);
+    let liveClass;
+    try {
+      liveClass = await LiveClass.findById(liveClassId);
+    } catch (castError) {
+      if (castError.name === 'CastError') {
+        liveClass = await LiveClass.findOne({ slug: liveClassId });
+      } else {
+        throw castError;
+      }
+    }
+    
     if (!liveClass) {
       return res.status(404).json({
         success: false,

@@ -5,21 +5,31 @@ const LiveClass = require('../../models/LiveClass');
 const setReminderController = async (req, res) => {
   try {
     const { id: liveClassId } = req.params;
-const studentId = req.user?.userId;
-  
-if (!studentId || typeof studentId !== 'string' || !mongoose.Types.ObjectId.isValid(studentId)) {
-    return res.status(400).json({ 
-      success: false,
-      message: 'Invalid or missing student authentication' 
-    });
-  } // from authMiddleware
+    const studentId = req.user?.userId;
+    
+    if (!studentId || typeof studentId !== 'string' || !mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid or missing student authentication' 
+      });
+    } 
 
     // Verify class exists and not completed
-    const liveClass = await LiveClass.findById(liveClassId);
+    let liveClass;
+    try {
+      liveClass = await LiveClass.findById(liveClassId);
+    } catch (castError) {
+      if (castError.name === 'CastError') {
+        liveClass = await LiveClass.findOne({ slug: liveClassId });
+      } else {
+        throw castError;
+      }
+    }
+    
     if (!liveClass) {
       return res.status(404).json({ success: false, message: 'Live class not found' });
     }
-    if (liveClass.status === 'completed') { // Note: uses computed status from getter
+    if (liveClass.status === 'completed') {
       return res.status(400).json({ success: false, message: 'Cannot set reminder for completed class' });
     }
 
@@ -29,7 +39,7 @@ if (!studentId || typeof studentId !== 'string' || !mongoose.Types.ObjectId.isVa
     // Check if already exists for this student/class
     const existingReminder = await Reminder.findOne({
       studentId,
-      liveClassId
+      liveClassId: liveClass._id
     });
 
     if (existingReminder) {
@@ -42,7 +52,7 @@ if (!studentId || typeof studentId !== 'string' || !mongoose.Types.ObjectId.isVa
     // Create reminder
     const reminder = new Reminder({
       studentId,
-      liveClassId,
+      liveClassId: liveClass._id,
       reminderTime,
       sent: false
     });
@@ -71,4 +81,3 @@ if (!studentId || typeof studentId !== 'string' || !mongoose.Types.ObjectId.isVa
 };
 
 module.exports = { setReminderController };
-
