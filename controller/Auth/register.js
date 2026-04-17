@@ -32,10 +32,10 @@ const register = async (req, res) => {
 
       const otp = generateOtp();
       cache.userCache.set(`otp:${email}`, otp, 120); // 2 min TTL
-      sendOtpEmail(existingUser.email, otp, existingUser.name);
+      const emailSent = await sendOtpEmail(existingUser.email, otp, existingUser.name).catch(() => false);
 
       return res.status(200).json({
-        message: "OTP resent to your email",
+        message: emailSent ? "OTP resent to your email" : "OTP ready (email service issue - check server logs)",
         user: {
           id: existingUser._id,
           name: existingUser.name,
@@ -65,10 +65,10 @@ const register = async (req, res) => {
     // Generate 6-digit OTP, cache for 2 minutes, and send via email
     const otp = generateOtp();
     cache.userCache.set(`otp:${email}`, otp, 120); // 2 min TTL
-    sendOtpEmail(user.email, otp, user.name);
+    const emailSent = await sendOtpEmail(user.email, otp, user.name).catch(() => false);
 
     res.status(201).json({
-      message: "Registration successful!",
+      message: emailSent ? "Registration successful!" : "User registered, OTP ready (email service issue - check server logs)",
       user: {
         id: user._id,
         name: user.name,
