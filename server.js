@@ -1,7 +1,8 @@
 
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-
+const dotenv = require("dotenv")
+const express = require("express")
 const connectDB = require("./config/db.js");
 const routes = require("./routes");
 const { startReminderCron } = require('./services/reminderService'); // Reminder cron
