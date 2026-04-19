@@ -1,30 +1,10 @@
-# Zoom API Token Fix - TODO
+# TODO: Fix dotenv error in server.js
 
-## Plan Breakdown (Approved ✅)
-
-**Step 1: [COMPLETED ✅] Update zoomService.js**
-- Removed static JWT from constructor  
-- Added fresh JWT generation per API call in createMeeting()
-- Increased expiry to 1 hour (3600s)
-- Verified updated file contents
-
-**Step 2: [PENDING] Test Zoom endpoints**
-- Restart backend server: `cd LMS-backend && node server.js`
-- Test create meeting via Postman/curl
-- Test from mobile app LiveClassesScreen -> join
-
-**Step 3: [PENDING] Handle other Zoom methods if exist**
-- Only createMeeting fixed so far
-- Add methods to zoomService/get if needed (current controllers don't call Zoom API)
-
-**Step 4: [PENDING] Verify .env credentials**
-- Ensure ZOOM_CLIENT_ID = your Zoom Account ID  
-- ZOOM_CLIENT_SECRET = JWT App Secret (Server-to-Server OAuth app)
-- Check Zoom App: Published, scopes: `meeting:write:admin`
-
-Progress: 40% complete
-
-## Next Action Required
-1. Add your Zoom JWT App credentials to `.env`
-2. Restart server and test create meeting
-3. Report if error persists (likely .env issue)
+## Steps:
+- [x] Create TODO.md with plan steps
+- [x] Step 1: Fix server.js (remove duplicate dotenv, use single config)
+- [x] Step 2: Create .env file with essential vars
+</new_str
+- [x] Step 3: Update .gitIgnore (.env already ignored)
+- [x] Step 4: Test server startup (run: cd LMS-backend && node server.js)
+- [ ] Step 5: Mark complete and attempt_completion
