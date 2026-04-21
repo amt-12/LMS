@@ -45,9 +45,17 @@ const verifyOtpSchema = Joi.object({
   })
 });
 
+const resendOtpSchema = Joi.object({
+  email: Joi.string().email().lowercase().required().messages({
+    'string.email': 'Valid email is required',
+    'any.required': 'Email is required'
+  })
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
-  verifyOtpSchema
+  verifyOtpSchema,
+  resendOtpSchema
 };
 

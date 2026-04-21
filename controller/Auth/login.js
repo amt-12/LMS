@@ -31,9 +31,7 @@ const login = async (req, res) => {
       user = await User.findOne({ email }).lean();
       cache.setCachedModel(email, user || { email, exists: false });
     }
-    if (!user || user.exists === false) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    if (!user || user.exists === false) {      console.log('Login 401: User not found - email:', email);      return res.status(401).json({ error: 'Invalid credentials' });    }
 
     // Guard against undefined/null password
     if (!password || typeof password !== 'string') {
@@ -46,11 +44,7 @@ const login = async (req, res) => {
       return res.status(410).json({ error: 'Account expired. Please register again.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    console.log('Password match result:', isMatch);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    const isMatch = await bcrypt.compare(password, user.password);    console.log('Password match result:', isMatch);    if (!isMatch) {      console.log('Login 401: Password mismatch - email:', email);      return res.status(401).json({ error: 'Invalid credentials' });    }
 
     if (!['student', 'admin'].includes(user.role)) {
       return res.status(403).json({ error: 'Access denied for this role' });

@@ -7,6 +7,7 @@ const router = express.Router();
 const register = require("../../controller/Auth/register");
 const login = require("../../controller/Auth/login");
 const verifyOtp = require("../../controller/Auth/verifyOtp");
+const resendOtp = require("../../controller/Auth/resendOtp");
 const adminLogin = require("../../controller/Auth/adminLogin");
 const { getProfile, updateProfile, deleteProfile, uploadProfileImage } = require("../../controller/Auth/profile");
 const { protect } = require("../../middleware/authMiddleware");
@@ -28,6 +29,7 @@ const upload = multer({
 router.post("/register", register);
 router.post("/login", loginLimiter, login);
 router.post("/verify-otp", loginLimiter, verifyOtp);
+router.post("/resend-otp", loginLimiter, resendOtp);
 router.post("/admin-login", adminLogin);
 
 // Profile routes
