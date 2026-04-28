@@ -9,6 +9,8 @@ const login = require("../../controller/Auth/login");
 const verifyOtp = require("../../controller/Auth/verifyOtp");
 const resendOtp = require("../../controller/Auth/resendOtp");
 const adminLogin = require("../../controller/Auth/adminLogin");
+const forgotPassword = require("../../controller/Auth/forgotPassword");
+const resetPassword = require("../../controller/Auth/resetPassword");
 const { getProfile, updateProfile, deleteProfile, uploadProfileImage } = require("../../controller/Auth/profile");
 const { protect } = require("../../middleware/authMiddleware");
 
@@ -31,6 +33,8 @@ router.post("/login", loginLimiter, login);
 router.post("/verify-otp", loginLimiter, verifyOtp);
 router.post("/resend-otp", loginLimiter, resendOtp);
 router.post("/admin-login", adminLogin);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 // Profile routes
 router.get("/profile", protect, getProfile);

@@ -52,10 +52,36 @@ const resendOtpSchema = Joi.object({
   })
 });
 
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().email().lowercase().required().messages({
+    'string.email': 'Valid email is required',
+    'any.required': 'Email is required'
+  })
+});
+
+const resetPasswordSchema = Joi.object({
+  email: Joi.string().email().lowercase().required().messages({
+    'string.email': 'Valid email is required',
+    'any.required': 'Email is required'
+  }),
+  resetCode: Joi.string().length(6).pattern(/^\d{6}$/).required().messages({
+    'string.base': 'Reset code must be a string',
+    'string.length': 'Reset code must be exactly 6 digits',
+    'string.pattern.base': 'Reset code must contain only digits',
+    'any.required': 'Reset code is required'
+  }),
+  newPassword: Joi.string().min(6).required().messages({
+    'string.min': 'Password must be at least 6 characters',
+    'any.required': 'New password is required'
+  })
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
   verifyOtpSchema,
-  resendOtpSchema
+  resendOtpSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema
 };
 
