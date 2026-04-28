@@ -47,7 +47,7 @@ const initS3Client = async () => {
   }
 };
 
-const uploadToS3 = async (fileBuffer, fileName, mimeType, customKey = null) => {
+const uploadToS3 = async (fileBuffer, fileName, mimeType, customKey = null, options = {}) => {
   const client = await initS3Client();
   const s3Key = customKey || `study-materials/${Date.now()}-${fileName}`;
   
@@ -61,8 +61,12 @@ const uploadToS3 = async (fileBuffer, fileName, mimeType, customKey = null) => {
     }
   };
 
+  if (options.isPublic) {
+    params.ACL = 'public-read';
+  }
+
   try {
-    console.log(`📤 Uploading to S3: ${s3Key}, size: ${fileBuffer.length}, type: ${mimeType}`);
+    console.log(`📤 Uploading to S3: ${s3Key}, size: ${fileBuffer.length}, type: ${mimeType}, public: ${!!options.isPublic}`);
     await client.send(new PutObjectCommand(params));
     console.log(`✅ Upload success: ${s3Key}`);
     return s3Key;
@@ -80,14 +84,18 @@ const uploadToS3 = async (fileBuffer, fileName, mimeType, customKey = null) => {
   }
 };
 
-const generateSignedUrl = async (s3Key) => {
+const generateSignedUrl = async (s3Key, expiresIn = 604800) => {
   const client = await initS3Client();
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
     Key: s3Key
   });
   
-  return await getSignedUrl(client, command, { expiresIn: 3600 });
+  return await getSignedUrl(client, command, { expiresIn });
+};
+
+const getPublicUrl = (s3Key) => {
+  return `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${s3Key}`;
 };
 
 const deleteFromS3 = async (s3Key) => {
@@ -124,6 +132,7 @@ const testS3Connection = async () => {
 module.exports = {
   uploadToS3,
   generateSignedUrl,
+  getPublicUrl,
   deleteFromS3,
   testS3Connection
 };

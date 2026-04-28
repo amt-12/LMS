@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 const getUnreadCount = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.userId || req.user._id;
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const unread = await Notification.aggregate([

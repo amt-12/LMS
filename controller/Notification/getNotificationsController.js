@@ -2,7 +2,7 @@ const Notification = require("../../models/Notification");
 
 const getNotifications = async (req, res) => {
   try {
-    const userId = req.user?._id;
+    const userId = req.user?.userId || req.user?._id;
     const notifications = await Notification.find()
       .populate('readBy')
       .sort({ createdAt: -1 })

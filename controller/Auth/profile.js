@@ -24,7 +24,7 @@ const getProfile = async (req, res) => {
     }
 
     const profileImageUrl = user.profileImage
-      ? await s3Service.generateSignedUrl(user.profileImage)
+      ? s3Service.getPublicUrl(user.profileImage)
       : null;
     res.json({
       profile: {
@@ -174,13 +174,13 @@ const uploadProfileImage = async (req, res) => {
       path.parse(file.originalname).name
     }${path.parse(file.originalname).ext}`;
     const s3Key = `profiles/${fileName}`;
-    await s3Service.uploadToS3(file.buffer, fileName, file.mimetype, s3Key);
+    await s3Service.uploadToS3(file.buffer, fileName, file.mimetype, s3Key, { isPublic: true });
 
     // Update user
     user.profileImage = s3Key;
     await user.save();
 
-    const profileImageUrl = await s3Service.generateSignedUrl(s3Key);
+    const profileImageUrl = s3Service.getPublicUrl(s3Key);
 
     res.json({
       message: "Profile image uploaded successfully",
