@@ -82,10 +82,10 @@ const getMaterials = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
-    const materialsList = materials.map(material => ({
+const materialsList = materials.map(material => ({
       key: material._id,
       title: material.title,
-      course: material.course.title,
+      course: material.course ? material.course.title : 'Course not available',
       fileName: material.fileName,
       fileSize: (material.fileSize / 1024 / 1024).toFixed(1) + ' MB',
       uploaded: new Date(material.createdAt).toLocaleDateString()
