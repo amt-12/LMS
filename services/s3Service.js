@@ -129,10 +129,32 @@ const testS3Connection = async () => {
   }
 };
 
+// Get PDF buffer from S3 - used for watermarking
+const getStreamBuffer = async (s3Key) => {
+  const client = await initS3Client();
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: s3Key
+  });
+  
+  try {
+    const s3Object = await client.send(command);
+    const chunks = [];
+    for await (const chunk of s3Object.Body) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  } catch (error) {
+    console.error('S3 getStreamBuffer error:', error.message);
+    throw new Error(`Failed to get S3 object: ${error.message}`);
+  }
+};
+
 module.exports = {
   uploadToS3,
   generateSignedUrl,
   getPublicUrl,
   deleteFromS3,
-  testS3Connection
+  testS3Connection,
+  getStreamBuffer
 };

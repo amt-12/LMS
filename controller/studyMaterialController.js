@@ -118,26 +118,18 @@ const getDownloadUrl = async (req, res) => {
     const isStudent = req.user?.role === 'student';
     const studentName = req.user?.name || 'Student';
 
-    if (isStudent) {
+if (isStudent) {
       console.log(`✅ Applying diagonal watermark for student "${studentName}" on ${material.fileName}`);
       
       const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
       const { PDFDocument, rgb, degrees } = require('pdf-lib');
-      const s3Client = new S3Client({
-        region: process.env.AWS_REGION || 'ap-south-1',
-        credentials: {
-          accessKeyId: "AKIAXYKJUX53D33EHRF5",
-          secretAccessKey: "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"
-        }
-      });
-
-      // Get PDF buffer from S3
-      const getObjectCommand = new GetObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET || 'lms-aja',
-        Key: material.s3Key
-      });
-      const s3Object = await s3Client.send(getObjectCommand);
-      const pdfBuffer = await streamToBuffer(s3Object.Body);
+      
+      // Use S3 service for getting PDF - ensures proper auth
+      const { generateSignedUrl } = require('../services/s3Service');
+      
+      // Get PDF directly from S3 using the service's client
+      const { getStreamBuffer } = require('../services/s3Service');
+      const pdfBuffer = await getStreamBuffer(material.s3Key);
 
       // Load PDF
       const pdfDoc = await PDFDocument.load(pdfBuffer);
