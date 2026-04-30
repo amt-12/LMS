@@ -16,8 +16,6 @@ const getRecordingsController = async (req, res) => {
 
   try {
     const rawMeetings = await zoomService.getRecordings();
-    console.log('[getRecordingsController] Raw meetings from Zoom:', rawMeetings.length);
-    console.log('[Cache] Size after cleanup:', PASSWORD_CACHE.size);
 
     // Enrich recordings with LiveClass database context and remove passcode requirement
     const enrichedRecordings = await Promise.all(rawMeetings.map(async (rec) => {
@@ -32,10 +30,8 @@ const getRecordingsController = async (req, res) => {
         
         if (!cached && rec.password) {
           try {
-            console.log(`[getRecordingsController] Removing password from meeting ${rec.id} (cache miss)`);
             await zoomService.updateMeetingPassword(rec.id, false);
             PASSWORD_CACHE.set(cacheKey, { passwordRemoved: true, timestamp: Date.now() });
-            console.log(`[Cache] Added ${cacheKey}, total: ${PASSWORD_CACHE.size}`);
           } catch (meetingError) {
             console.warn(`[getRecordingsController] Could not access meeting ${rec.id}:`, meetingError.message);
             // Cache the failure to avoid retries
@@ -51,7 +47,6 @@ const getRecordingsController = async (req, res) => {
       }
 
       // Log what recording_files look like for debugging
-      console.log(`[Recording] Meeting ${rec.id} | topic="${rec.topic}" | files=${JSON.stringify((rec.recording_files || []).map(f => ({ type: f.file_type, status: f.status, has_play: !!f.play_url, has_dl: !!f.download_url })))}`);
 
       const payload = {
         id: rec.uuid,
@@ -79,7 +74,6 @@ const getRecordingsController = async (req, res) => {
           // ALWAYS add proxy for reliable playback (bypasses CORS)
           if (payload.video_url) {
             payload.proxy_url = `/api/live-classes/recordings/proxy?video_url=${encodeURIComponent(payload.video_url)}`;
-            console.log(`[getRecordingsController] Added proxy for meeting ${rec.id}: ${payload.proxy_url}`);
           } else {
             console.warn(`[getRecordingsController] NO video_url for ${rec.id} - skipping proxy`);
           }
@@ -97,8 +91,6 @@ const getRecordingsController = async (req, res) => {
 
     // Filter out meetings that do not have a playable URL (prefer download_url)
     const validRecordings = enrichedRecordings.filter(rec => rec.play_url || rec.video_url);
-    console.log('[getRecordingsController] Valid recordings with play_url/video_url:', validRecordings.length, '/', enrichedRecordings.length);
-    console.log('[Cache] Final size:', PASSWORD_CACHE.size);
 
     // Sort by most recent
     validRecordings.sort((a, b) => new Date(b.date) - new Date(a.date));

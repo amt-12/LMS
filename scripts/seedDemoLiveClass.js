@@ -8,7 +8,6 @@ require('dotenv').config({ path: './.env' });
 async function seedDemo() {
   try {
     await connectDB();
-    console.log('✅ Connected to DB');
 
     const demoSlug = 'demo';
 
@@ -16,7 +15,6 @@ async function seedDemo() {
     const existingLiveClass = await LiveClass.findOne({ slug: demoSlug });
     if (existingLiveClass) {
       await LiveClass.findByIdAndDelete(existingLiveClass._id);
-      console.log('🗑️  Deleted existing demo LiveClass');
     }
 
     const existingSubject = await Subject.findOne({ title: 'Demo Subject' });
@@ -26,7 +24,6 @@ async function seedDemo() {
 
     // Create minimal Subject if not exists
     if (!existingSubject) {
-      console.log('📚 Creating Demo Subject...');
       const demoSubject = new Subject({
         title: 'Demo Subject',
         slug: 'demo-subject',
@@ -34,15 +31,12 @@ async function seedDemo() {
       });
       await demoSubject.save();
       demoSubjectId = demoSubject._id;
-      console.log('✅ Demo Subject created:', demoSubjectId);
     } else {
       demoSubjectId = existingSubject._id;
-      console.log('✅ Using existing Demo Subject:', demoSubjectId);
     }
 
     // Create minimal User (teacher) if not exists
     if (!existingUser) {
-      console.log('👤 Creating Demo Teacher...');
       const demoUser = new User({
         name: 'Demo Teacher',
         email: 'demo@teacher.com',
@@ -54,10 +48,8 @@ async function seedDemo() {
       });
       await demoUser.save();
       demoUserId = demoUser._id;
-      console.log('✅ Demo Teacher created:', demoUserId);
     } else {
       demoUserId = existingUser._id;
-      console.log('✅ Using existing Demo Teacher:', demoUserId);
     }
 
     // Now create LiveClass with VALID references
@@ -75,12 +67,6 @@ async function seedDemo() {
     });
 
     await demoClass.save();
-    console.log('🎉 Demo LiveClass created successfully!');
-    console.log('📋 ID:', demoClass._id);
-    console.log('🔗 Test it:');
-    console.log(`   curl http://localhost:5001/api/live-classes/demo`);
-    console.log('');
-    console.log('✅ SEED COMPLETE - Restart server and test frontend Dashboard!');
 
   } catch (error) {
     console.error('❌ Seed ERROR:', error.message);

@@ -16,8 +16,6 @@ const signatureController = async (req, res) => {
     // Role: 0 for participant, 1 for host. Default to 0 if not provided.
     const userRole = role !== undefined ? Number(role) : 0;
 
-    console.log('--- Signature & ZAK Request ---');
-    console.log('Body:', req.body);
 
     // Enrollment check for participants
     if (userRole === 0) {
@@ -45,13 +43,10 @@ const signatureController = async (req, res) => {
 
     if (userRole === 1) {
       // Host: Return ZAK token ONLY. No signature, SDK Key, or appKey needed.
-      console.log('Generating ZAK token for host...');
       const zak = await zoomService.getZakToken();
       responseData.zak = zak;
-      console.log('ZAK Token fetched successfully (truncated):', zak.substring(0, 5) + '...');
     } else {
       // Participant: Return Signature and SDK Key. No ZAK token.
-      console.log('Generating signature for participant...');
       const signatureData = await zoomService.generateSignature(meetingNumber, userRole);
       responseData = {
         ...responseData,
@@ -59,7 +54,6 @@ const signatureController = async (req, res) => {
       };
     }
 
-    console.log('Final Response:', JSON.stringify(responseData, null, 2));
     res.json(responseData);
   } catch (error) {
     console.error('Zoom auth generation error:', error);

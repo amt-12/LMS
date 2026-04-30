@@ -56,8 +56,6 @@ const startLiveClassController = async (req, res) => {
 
           if (!enrolledStudents.length) return;
 
-          console.log(`Sending live class start email to ${enrolledStudents.length} enrolled student(s)...`);
-
           // Send emails concurrently
           await Promise.all(
             enrolledStudents.map(student =>

@@ -23,7 +23,6 @@ const protect = async (req, res, next) => {
     });
   }
 
-  console.log('🔑 Auth:', req.cookies?.token ? 'cookie' : 'Bearer header');
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

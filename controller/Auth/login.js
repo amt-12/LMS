@@ -8,22 +8,17 @@ const { generateOtp } = require('../../services/otpService');
 
 const login = async (req, res) => {
   try {
-    console.log('Raw req.body:', req.body);
 
     if (!req.body || typeof req.body !== 'object') {
       return res.status(400).json({ error: 'Invalid request body' });
     }
 
     const result = await loginSchema.validateAsync(req.body);
-    console.log('validateAsync result:', result);
     if (result.error) {
       return res.status(400).json({ error: result.error.details[0].message });
     }
     const validatedData = result.value || result;
     const { email, password } = validatedData;
-    console.log('Destructured email/password:', { email, hasPassword: !!password });
-    console.log('Login attempt for email:', email);
-    console.log('Validated data:', { email, passwordExists: !!password, passwordType: typeof password });
 
     let user = cache.getCachedModel(email);
 
@@ -35,7 +30,6 @@ const login = async (req, res) => {
 
     // Guard against undefined/null password
     if (!password || typeof password !== 'string') {
-      console.log('Password validation failed:', { password, type: typeof password });
       return res.status(400).json({ error: 'Password is required and must be a string' });
     }
 
@@ -44,7 +38,7 @@ const login = async (req, res) => {
       return res.status(410).json({ error: 'Account expired. Please register again.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);    console.log('Password match result:', isMatch);    if (!isMatch) {      console.log('Login 401: Password mismatch - email:', email);      return res.status(401).json({ error: 'Invalid credentials' });    }
+    const isMatch = await bcrypt.compare(password, user.password);       if (!isMatch) {      console.log('Login 401: Password mismatch - email:', email);      return res.status(401).json({ error: 'Invalid credentials' });    }
 
     if (!['student', 'admin'].includes(user.role)) {
       return res.status(403).json({ error: 'Access denied for this role' });
@@ -95,7 +89,6 @@ const login = async (req, res) => {
     cache.userCache.set(otpKey, otp, 120); // 2 minutes
     cache.userCache.set(cooldownKey, true, 120); // 2 min cooldown
 
-    console.log(`OTP ${otp} sent for ${email}`);
 
      sendOtpEmail(email, otp, user.name);
 

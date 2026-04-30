@@ -23,7 +23,6 @@ const reportViolation = async (req, res) => {
 
     await user.save();
 
-    console.log(`[ContentProtection] Violation #${user.contentViolations} for ${user.email} (type: ${type || 'unknown'})`);
 
     res.json({
       success: true,
@@ -80,11 +79,9 @@ const unblockStudent = async (req, res) => {
     student.lastViolationAt = null;
     await student.save();
 
-    console.log(`[ContentProtection] Admin ${admin.email} unblocked student ${student.email}`);
 
     res.json({ success: true, message: `${student.name} has been unblocked` });
   } catch (error) {
-    console.error('[ContentProtection] unblock error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

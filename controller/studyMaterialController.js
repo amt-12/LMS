@@ -119,7 +119,6 @@ const getDownloadUrl = async (req, res) => {
     const studentName = req.user?.name || 'Student';
 
 if (isStudent) {
-      console.log(`✅ Applying diagonal watermark for student "${studentName}" on ${material.fileName}`);
       
       const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
       const { PDFDocument, rgb, degrees } = require('pdf-lib');
@@ -177,7 +176,6 @@ if (isStudent) {
       res.send(watermarkedPdfBytes);
     } else {
       // 🚫 Non-students: Clean original PDF via signed S3 URL
-      console.log(`📄 Admin/Teacher "${req.user?.name || 'Guest'}" - serving clean PDF`);
       const { generateSignedUrl } = require('../services/s3Service');
       const signedUrl = await generateSignedUrl(material.s3Key);
       res.json({ downloadUrl: signedUrl });

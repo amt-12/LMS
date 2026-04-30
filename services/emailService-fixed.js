@@ -2,7 +2,6 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 
-console.log('Initializing email transporter with user:', process.env.SMTP_EMAIL || 'fallback');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -15,7 +14,6 @@ const transporter = nodemailer.createTransport({
 function compileTemplate(templatePath, data = {}) {
   try {
     let template = fs.readFileSync(path.join(__dirname, '../templates/email-template.html'), 'utf8');
-    console.log('Email template loaded successfully');
     
     // Replace placeholders
     Object.keys(data).forEach(key => {
@@ -32,18 +30,14 @@ function compileTemplate(templatePath, data = {}) {
 
 // Send generic email
 async function sendEmail(to, subject, data = {}) {
-  console.log(`🔄 Attempting to send email to: ${to}, subject: ${subject}`);
-  console.log('SMTP user:', process.env.SMTP_EMAIL || 'fallback used');
   
   try {
     // Verify transporter
     await transporter.verify().catch(err => {
       throw new Error(`Transporter not ready: ${err.message}`);
     });
-    console.log('✅ Transporter verified');
     
     const html = compileTemplate(null, data);
-    console.log('📄 HTML length:', html.length > 1000 ? `${html.length} chars` : 'short');
 
     const mailOptions = {
       from: `"Abhishek's Judicial Academy" <${process.env.SMTP_EMAIL || 'amrit0207232@gmail.com'}>`,
@@ -53,7 +47,6 @@ async function sendEmail(to, subject, data = {}) {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent successfully to ${to} | Subject: ${subject}`);
     return true;
   } catch (error) {
     console.error(`❌ Email FAILED to ${to}:`, error.message);
@@ -65,7 +58,6 @@ async function sendEmail(to, subject, data = {}) {
 
 // OTP email - now with better logging and error handling
 async function sendOtpEmail(to, otp, name) {
-  console.log(`📧 Sending OTP ${otp} to ${to} (${name})`);
   
   try {
     await sendEmail(to, "Abhishek's Judicial Academy - Your OTP Code", {
@@ -82,7 +74,6 @@ async function sendOtpEmail(to, otp, name) {
         </div>
       `
     });
-    console.log(`✅ OTP email completed for ${to}`);
   } catch (err) {
     console.error(`💥 OTP email failed for ${to}:`, err.message);
     throw err;

@@ -58,10 +58,8 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.userId);
   socket.join(`user_${socket.userId}`);
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.userId);
   });
 });
 
@@ -75,7 +73,6 @@ process.on('SIGINT', () => {
 const PORT = process.env.PORT || 5001;
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
   startReminderCron();
 });
 

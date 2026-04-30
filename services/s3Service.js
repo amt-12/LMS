@@ -30,7 +30,6 @@ const initS3Client = async () => {
     // Test bucket access
     try {
       await s3Client.send(new HeadBucketCommand({ Bucket: BUCKET_NAME }));
-      console.log(`✅ S3 Client + Bucket access confirmed: ${BUCKET_NAME}`);
     } catch (bucketError) {
       console.error(`⚠️ Bucket access failed (check IAM): ${bucketError.message}`);
       // Don't fail init, let operations fail specifically
@@ -39,7 +38,6 @@ const initS3Client = async () => {
     // Test connection - COMMENTED OUT for debugging UnknownError
     // await s3Client.send(new HeadBucketCommand({ Bucket: BUCKET_NAME }));
     // console.log(`✅ S3 Client connected to bucket: ${BUCKET_NAME}`);
-    console.log(`✅ S3 Client initialized (bucket test skipped): ${BUCKET_NAME}`);
     return s3Client;
   } catch (error) {
     console.error('❌ S3 connection failed:', error.message);
@@ -66,9 +64,7 @@ const uploadToS3 = async (fileBuffer, fileName, mimeType, customKey = null, opti
   }
 
   try {
-    console.log(`📤 Uploading to S3: ${s3Key}, size: ${fileBuffer.length}, type: ${mimeType}, public: ${!!options.isPublic}`);
     await client.send(new PutObjectCommand(params));
-    console.log(`✅ Upload success: ${s3Key}`);
     return s3Key;
   } catch (error) {
     console.error('❌ S3 Upload Debug:', {

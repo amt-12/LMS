@@ -47,7 +47,6 @@ const getProfile = async (req, res) => {
         joined: user.createdAt,
       },
     });
-    console.log(profileImageUrl,"profileImageUrl")
   } catch (error) {
     console.error("Get profile error:", error);
     res.status(500).json({ error: "Server error fetching profile" });

@@ -22,7 +22,6 @@ const recordingProxyController = async (req, res) => {
       return res.status(400).json({ success: false, message: 'video_url query param required' });
     }
 
-    console.log(`[Proxy] Streaming: ${video_url.substring(0, 80)}...`);
 
     // Get a fresh Zoom OAuth access token
     const accessToken = await zoomService.getAccessToken();
@@ -45,10 +44,7 @@ const recordingProxyController = async (req, res) => {
       timeout: 30000, // 30s timeout for large files
     });
 
-    console.log('[Proxy] Zoom response:', zoomRes.status,
-      'content-length:', zoomRes.headers['content-length'] || 'unknown',
-      'content-type:', zoomRes.headers['content-type']
-    );
+
 
     // Forward relevant response headers
     const responseHeaders = {

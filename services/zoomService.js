@@ -34,7 +34,6 @@ class ZoomService {
         }
       );
 
-      // console.log('Zoom token response:', JSON.stringify(response.data, null, 2));
       this.accessToken = response.data.access_token;
       this.expiry = Date.now() + (response.data.expires_in * 1000);
       return this.accessToken;
@@ -117,13 +116,8 @@ class ZoomService {
       tokenExp: iat + 60 * 60 * 2
     };
 
-    console.log('--- Zoom Signature Debug ---');
-    console.log('SDK Key:', sdkKey.substring(0, 5) + '...');
-    console.log('SDK Secret ends with:', sdkSecret.substring(sdkSecret.length - 5));
-    console.log('Payload:', JSON.stringify(payload, null, 2));
 
     const signature = jwt.sign(payload, sdkSecret, { algorithm: 'HS256' });
-    console.log('Generated Signature (truncated):', signature.substring(0, 10) + '...');
 
     return {
       sdkKey,
@@ -257,7 +251,6 @@ async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
         const fromStr = from.toISOString().split('T')[0]; // yyyy-MM-dd
         const toStr   = to.toISOString().split('T')[0];
 
-        console.log(`[Zoom Recordings] Fetching range: ${fromStr} → ${toStr}`);
 
         const response = await axios.get(`${this.apiUrl}/users/${userId}/recordings`, {
           params: { from: fromStr, to: toStr, page_size: 300 },
@@ -265,7 +258,6 @@ async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
         });
 
         const meetings = response.data.meetings || [];
-        console.log(`[Zoom Recordings] Range ${fromStr}→${toStr}: ${meetings.length} meetings, total_records=${response.data.total_records}`);
 
         for (const m of meetings) {
           if (!seen.has(m.uuid)) {
@@ -275,7 +267,6 @@ async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
         }
       }
 
-      console.log(`[Zoom Recordings] Grand total returned: ${allMeetings.length} meetings`);
       return allMeetings;
     } catch (error) {
       console.error('Zoom Get Recordings error:', error.response?.data || error.message);
@@ -284,7 +275,6 @@ async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
 
       // If scopes are invalid, the token might be cached from before the user added the scope
       if (errorCode === 4711 && retry) {
-        console.log('Force clearing cached Zoom access token and retrying...');
         this.accessToken = null;
         this.expiry = 0;
         return this.getRecordings(userId, monthsBack, false);

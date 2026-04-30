@@ -8,7 +8,6 @@ const forgotPassword = async (req, res) => {
   try {
     const result = await forgotPasswordSchema.validateAsync(req.body);
     const { email } = result;
-console.log("got email",email)
     const user = await User.findOne({ email }).lean();
     if (!user) {
       return res.status(404).json({ error: 'No account found with this email address.' });

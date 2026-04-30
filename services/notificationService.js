@@ -24,13 +24,11 @@ async function sendBulkNotification(notification, students) {
         }
       );
       emailsSent.push(student.email);
-      console.log(`✅ Notification sent to ${student.email}`);
     } catch (error) {
       console.error(`❌ Failed to send to ${student.email}:`, error.message);
     }
   }
   
-  console.log(`Bulk send complete: ${emailsSent.length}/${students.length} delivered`);
 }
 
 module.exports = { sendBulkNotification };

@@ -6,7 +6,6 @@ const { loginSchema } = require('../../services/validation_schema');
 
 const adminLogin = async (req, res) => {
   try {
-    console.log('Raw req.body:', req.body);
 
     if (!req.body || typeof req.body !== 'object') {
       return res.status(400).json({ error: 'Invalid request body' });
@@ -18,7 +17,6 @@ const adminLogin = async (req, res) => {
     }
     const { email, password } = result;
 
-    console.log('Admin login attempt for email:', email);
 
     const user = await User.findOne({ email }).lean();
 

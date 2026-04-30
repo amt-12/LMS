@@ -51,7 +51,6 @@ const startReminderCron = () => {
         reminder.sent = true;
         await reminder.save();
 
-        console.log(`✅ Reminder sent to ${studentId.email} for ${classTitle}`);
       }
 
     } catch (error) {
@@ -59,13 +58,11 @@ const startReminderCron = () => {
     }
   });
 
-  console.log('🔄 Reminder cron started (every minute)');
 };
 
 const stopReminderCron = () => {
   if (cronJob) {
     cronJob.stop();
-    console.log('⏹️ Reminder cron stopped');
   }
 };
 

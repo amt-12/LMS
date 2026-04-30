@@ -68,10 +68,8 @@ const { name, email, phone, address, status, enrollment, enrolledCourses, enroll
 
         if (student.enrollment === 'active') {
           await sendEnrollmentEmail(student.email, student.name, fullCourseInfo);
-          console.log(`Enrollment activation email sent to ${student.email}`);
         } else if (student.enrollment === 'inactive') {
           await sendUnenrollmentEmail(student.email, student.name, fullCourseInfo);
-          console.log(`Unenrollment notice email sent to ${student.email}`);
         }
       } catch (e) {
         console.error('Failed to send enrollment/unenrollment email:', e);
