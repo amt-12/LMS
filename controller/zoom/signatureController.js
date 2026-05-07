@@ -16,11 +16,24 @@ const signatureController = async (req, res) => {
     // Role: 0 for participant, 1 for host. Default to 0 if not provided.
     const userRole = role !== undefined ? Number(role) : 0;
 
+    // Security check: Only admins can be hosts
+    if (userRole === 1 && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only admins can join as host'
+      });
+    }
+
 
     // Enrollment check for participants
     if (userRole === 0) {
-      const studentId = req.user.id;
+      const studentId = req.user.userId || req.user.id;
       const student = await User.findById(studentId).select('role enrolledSubjects');
+      
+      if (!student) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
       if (student.role === 'student') {
         const liveClass = await LiveClass.findOne({ zoomMeetingId: meetingNumber }).populate('subjectId', 'title');
         if (!liveClass) {
