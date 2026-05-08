@@ -45,6 +45,20 @@ const hostJoinLiveClassController = async (req, res) => {
     // Fetch ZAK token for host join
     const zak = await zoomService.getZakToken();
 
+    // Force-disable auto-recording for this meeting right before joining as host
+    // This ensures that even if the meeting was created with auto-record ON, 
+    // or if account-level settings are forcing it, we try to override it to 'none'
+    try {
+      await zoomService.updateMeeting(
+        meetingNumber,
+        liveClass.title,
+        liveClass.startTime,
+        liveClass.duration
+      );
+    } catch (err) {
+      console.warn('Pre-join meeting update failed:', err.message);
+    }
+
     // Generate signature for host (role=1)
     const signatureData = await zoomService.generateSignature(meetingNumber, 1);
 

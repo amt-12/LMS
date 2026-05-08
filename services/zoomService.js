@@ -59,7 +59,7 @@ class ZoomService {
           join_before_host: false,
           mute_upon_entry: true,
           password: this.generatePassword(),
-          auto_recording: 'cloud',
+          auto_recording: 'none',
         },
       }, {
         headers: {
@@ -98,7 +98,7 @@ class ZoomService {
     const jwt = require('jsonwebtoken');
     const sdkKey = process.env.ZOOM_SDK_KEY;
     const sdkSecret = process.env.ZOOM_SDK_SECRET;
-    
+
     if (!sdkKey || !sdkSecret) {
       throw new Error('ZOOM_SDK_KEY or ZOOM_SDK_SECRET missing in .env');
     }
@@ -193,6 +193,9 @@ class ZoomService {
         start_time: new Date(startTime).toISOString(),
         duration,
         timezone: 'UTC',
+        settings: {
+          auto_recording: 'none'
+        }
       }, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -233,7 +236,7 @@ class ZoomService {
    * @param {boolean} retry - Allow retrying once on scope error
    * @returns {Array} List of recording meetings
    */
-async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
+  async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
     try {
       const accessToken = await this.getAccessToken();
 
@@ -249,7 +252,7 @@ async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
         from.setMonth(from.getMonth() - 1);
 
         const fromStr = from.toISOString().split('T')[0]; // yyyy-MM-dd
-        const toStr   = to.toISOString().split('T')[0];
+        const toStr = to.toISOString().split('T')[0];
 
 
         const response = await axios.get(`${this.apiUrl}/users/${userId}/recordings`, {
@@ -317,7 +320,8 @@ async getRecordings(userId = 'me', monthsBack = 6, retry = true) {
       await axios.patch(`${this.apiUrl}/meetings/${meetingId}`, {
         password: password,
         settings: {
-          password: password
+          password: password,
+          auto_recording: 'none'
         }
       }, {
         headers: {

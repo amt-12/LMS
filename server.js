@@ -22,7 +22,8 @@ app.use(cookieParser());
 app.use(cors({
   origin: [
     "https://admin.abhishekjudicialacademy.in",
-    "https://abhishekjudicialacademy.in"
+    "https://abhishekjudicialacademy.in",
+    "http://localhost:8080"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true

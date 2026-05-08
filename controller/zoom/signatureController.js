@@ -29,7 +29,7 @@ const signatureController = async (req, res) => {
     if (userRole === 0) {
       const studentId = req.user.userId || req.user.id;
       const student = await User.findById(studentId).select('role enrolledSubjects');
-      
+
       if (!student) {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
@@ -40,9 +40,9 @@ const signatureController = async (req, res) => {
           return res.status(404).json({ success: false, message: 'Live class not found' });
         }
         if (!student.enrolledSubjects?.includes(liveClass.subjectId._id)) {
-          return res.status(403).json({ 
-            success: false, 
-            message: `Not enrolled for subject: ${liveClass.subjectId.title}` 
+          return res.status(403).json({
+            success: false,
+            message: `Not enrolled for subject: ${liveClass.subjectId.title}`
           });
         }
       }
@@ -58,6 +58,21 @@ const signatureController = async (req, res) => {
       // Host: Return ZAK token ONLY. No signature, SDK Key, or appKey needed.
       const zak = await zoomService.getZakToken();
       responseData.zak = zak;
+
+      // Force-disable auto-recording for this meeting right before joining as host
+      try {
+        const liveClass = await LiveClass.findOne({ zoomMeetingId: meetingNumber });
+        if (liveClass) {
+          await zoomService.updateMeeting(
+            meetingNumber,
+            liveClass.title,
+            liveClass.startTime,
+            liveClass.duration
+          );
+        }
+      } catch (err) {
+        console.warn('Pre-join meeting update failed in signatureController:', err.message);
+      }
     } else {
       // Participant: Return Signature and SDK Key. No ZAK token.
       const signatureData = await zoomService.generateSignature(meetingNumber, userRole);
