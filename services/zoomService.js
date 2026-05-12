@@ -235,8 +235,37 @@ class ZoomService {
    * @param {string} meetingId - Zoom meeting ID (used by front-end as rec.meetingId)
    */
   async deleteRecording(meetingId) {
-    // Reuse deleteMeeting, as the current zoomService already supports meeting deletion.
-    return this.deleteMeeting(meetingId);
+    try {
+      const accessToken = await this.getAccessToken();
+      
+      // 1. Delete the recordings permanently from the cloud
+      try {
+        await axios.delete(`${this.apiUrl}/meetings/${meetingId}/recordings`, {
+          params: { action: 'delete' },
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+      } catch (recError) {
+        console.warn(`Zoom recordings for meeting ${meetingId} could not be deleted or already deleted:`, recError.response?.data || recError.message);
+      }
+
+      // 2. Delete the meeting itself
+      try {
+        await axios.delete(`${this.apiUrl}/meetings/${meetingId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+      } catch (meetError) {
+        console.warn(`Zoom meeting ${meetingId} could not be deleted or already deleted:`, meetError.response?.data || meetError.message);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Zoom Delete Recording wrapper error:', error.message);
+      throw new Error('Failed to process Zoom recording deletion.');
+    }
   }
 
 
