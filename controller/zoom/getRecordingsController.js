@@ -1,11 +1,11 @@
 const zoomService = require('../../services/zoomService');
 const LiveClass = require('../../models/LiveClass');
 
+// In-memory cache to prevent rate limit hits on password updates
+// Key: meetingId, Value: {passwordRemoved: true, timestamp}
+const PASSWORD_CACHE = new Map();
+
 const getRecordingsController = async (req, res) => {
-  // In-memory cache to prevent rate limit hits on password updates
-  // Key: meetingId, Value: {passwordRemoved: true, timestamp}
-  const PASSWORD_CACHE = new Map();
-  
   // Cleanup old cache entries (older than 24h)
   const now = Date.now();
   for (const [key, value] of PASSWORD_CACHE.entries()) {
