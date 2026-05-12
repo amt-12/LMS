@@ -29,18 +29,50 @@ const recordingProxyController = async (req, res) => {
     const separator = video_url.includes('?') ? '&' : '?';
     const authenticatedUrl = `${video_url}${separator}access_token=${accessToken}`;
 
-    // For mobile apps, redirecting to the authenticated Zoom URL is much more reliable
-    // than proxying the stream. It allows the native player (ExoPlayer/AVPlayer) 
-    // to handle the stream directly with all native optimizations.
-    console.log(`[Proxy] Redirecting to Zoom authenticated URL for: ${video_url.substring(0, 50)}...`);
-    return res.redirect(authenticatedUrl);
+    // Use axios streaming — it follows redirects automatically
+    const zoomRes = await axios.get(authenticatedUrl, {
+      responseType: 'stream',
+      headers: {
+        ...headers,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      maxRedirects: 10,
+      timeout: 60000,
+    });
+
+    // Forward relevant response headers with FORCED video/mp4 content type
+    // This is crucial for Android devices that fail to decode application/octet-stream
+    const responseHeaders = {
+      'Content-Type': 'video/mp4',
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'public, max-age=3600',
+    };
+
+    if (zoomRes.headers['content-length']) {
+      responseHeaders['Content-Length'] = zoomRes.headers['content-length'];
+    }
+    if (zoomRes.headers['content-range']) {
+      responseHeaders['Content-Range'] = zoomRes.headers['content-range'];
+    }
+
+    res.writeHead(zoomRes.status, responseHeaders);
+
+    // Pipe the video stream to the client
+    zoomRes.data.pipe(res);
+
+    zoomRes.data.on('error', (err) => {
+      console.error('[Proxy] Stream error:', err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Stream error' });
+      }
+    });
 
   } catch (error) {
     console.error('[Proxy Controller] Error:', error.response?.status, error.message);
     if (!res.headersSent) {
       res.status(502).json({
         success: false,
-        message: 'Failed to get authenticated recording URL from Zoom',
+        message: 'Failed to stream video from Zoom',
         error: error.message,
       });
     }
@@ -48,4 +80,3 @@ const recordingProxyController = async (req, res) => {
 };
 
 module.exports = { recordingProxyController };
-
