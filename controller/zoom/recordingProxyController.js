@@ -35,16 +35,33 @@ const recordingProxyController = async (req, res) => {
       headers['Range'] = req.headers['range'];
     }
 
-    // Use axios streaming — it follows redirects automatically
-    const zoomRes = await axios.get(authenticatedUrl, {
-      responseType: 'stream',
-      headers: {
-        ...headers,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      },
-      maxRedirects: 10,
-      timeout: 60000,
-    });
+    // We must handle redirects manually to preserve the 'Range' header
+    // Axios (and most clients) strip 'Range' and 'Authorization' when following redirects to a different domain
+    let currentUrl = authenticatedUrl;
+    let zoomRes;
+    let redirects = 0;
+
+    while (redirects < 10) {
+      zoomRes = await axios.get(currentUrl, {
+        responseType: 'stream',
+        headers: {
+          ...headers,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        maxRedirects: 0, // Handle manually
+        validateStatus: (status) => (status >= 200 && status < 400),
+        timeout: 60000,
+      });
+
+      if (zoomRes.status >= 300 && zoomRes.status < 400 && zoomRes.headers.location) {
+        currentUrl = zoomRes.headers.location;
+        redirects++;
+        // Resume stream for next hop
+        zoomRes.data.destroy();
+      } else {
+        break;
+      }
+    }
 
     // Forward relevant response headers with FORCED video/mp4 content type
     // This is crucial for Android devices that fail to decode application/octet-stream
