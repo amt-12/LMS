@@ -17,10 +17,16 @@ const deleteRecordingController = async (req, res) => {
       });
     }
 
-    await zoomService.deleteRecording(meetingId);
+    // Try deleting from Zoom cloud.
+    // If Zoom returns "meeting does not exist" but the recording still appears due to retention/async deletion,
+    // we still delete from Mongo and mark it as deleted in cache so UI hides it immediately.
+    try {
+      await zoomService.deleteRecording(meetingId);
+    } catch (zoomError) {
+      console.warn('[deleteRecordingController] Zoom delete failed (non-fatal):', zoomError.message);
+    }
 
     // Delete from Mongo as well (your recordings list is backed by LiveClass documents)
-    // LiveClass.zoomMeetingId is unique and stores the zoom meeting id.
     await LiveClass.deleteMany({ zoomMeetingId: meetingId.toString() });
 
     // Hide this meeting for a short time in /recordings/all (Zoom may take a bit to reflect deletions)

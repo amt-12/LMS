@@ -22,6 +22,12 @@ const getRecordingsController = async (req, res) => {
     const DELETED_MEETINGS = global.__DELETED_ZOOM_MEETINGS__;
     const deletedTtlMs = 30 * 60 * 1000; // 30 minutes
 
+    // Defensive: ensure cache exists
+    if (!DELETED_MEETINGS) {
+      global.__DELETED_ZOOM_MEETINGS__ = new Map();
+    }
+
+
     // Enrich recordings with DB context + remove passcodes
     const enrichedRecordings = await Promise.all(
       rawMeetings.map(async (rec) => {
