@@ -15,7 +15,9 @@ const contentProtectionRoutes = require("./contentProtection.route");
 const router = express.Router();
 
 router.use("/auth", authRoutes);
+router.use("/auth/session", require('./authSession.route'));
 router.use("/test", testRoutes);
+
 router.use("/study-materials", studyMaterialsRoutes);
 router.use("/students", studentsRoutes);
 router.use("/courses", courseRoutes);
