@@ -29,6 +29,12 @@ const recordingProxyController = async (req, res) => {
     const separator = video_url.includes('?') ? '&' : '?';
     const authenticatedUrl = `${video_url}${separator}access_token=${accessToken}`;
 
+    // Build request headers - forward Range for seeking
+    const headers = {};
+    if (req.headers['range']) {
+      headers['Range'] = req.headers['range'];
+    }
+
     // Use axios streaming — it follows redirects automatically
     const zoomRes = await axios.get(authenticatedUrl, {
       responseType: 'stream',
