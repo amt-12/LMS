@@ -26,14 +26,31 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Check cache first
-    // const cachedUser = await getCachedUser(decoded.userId);
-    // if (cachedUser) {
-    //   req.user = cachedUser;
-    //   return next();
-    // }
-    
+
+    // Enforce single active session per user.
+    // If the token has a sessionId and it doesn't match the DB activeSessionId => kick.
+    if (decoded?.userId) {
+      const User = require('../models/Auth/User');
+      const dbUser = await User.findById(decoded.userId).select('activeSessionId role status enrollment').lean();
+
+      if (!dbUser) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+
+      if (decoded?.sessionId && dbUser.activeSessionId && decoded.sessionId !== dbUser.activeSessionId) {
+        return res.status(401).json({ message: 'Session expired' });
+      }
+
+      // Attach minimal user info to req.user for controllers
+      req.user = {
+        ...decoded,
+        role: dbUser.role,
+        status: dbUser.status,
+        enrollment: dbUser.enrollment,
+      };
+      return next();
+    }
+
     // Cache miss - will be populated by controller/service if needed
     req.user = decoded;
     next();

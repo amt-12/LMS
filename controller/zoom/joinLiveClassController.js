@@ -7,31 +7,13 @@ const joinLiveClassController = async (req, res) => {
     const { liveClassId } = req.body;
     const studentId = req.user.userId || req.user.id;
     const deviceType = req.body.deviceType || 'web';
+    const deviceSessionId = req.body.deviceSessionId;
 
-    const existingJoin = await StudentLiveClassJoin.findOne({
-      studentId,
-      liveClassId,
-      active: true
-    });
-
-    if (existingJoin) {
-      if (existingJoin.deviceType === deviceType) {
-        return res.json({
-          success: true,
-          data: {
-            joinUrl: existingJoin.liveClass.joinUrl,
-            password: existingJoin.liveClass.password,
-            message: 'Already joined on this device'
-          }
-        });
-      } else {
-        return res.status(409).json({
-          success: false,
-          message: `Already joined on ${existingJoin.deviceType}. Email admin to switch.`
-        });
-      }
+    if (!deviceSessionId) {
+      return res.status(400).json({ success: false, message: 'deviceSessionId is required' });
     }
 
+    // Fetch the live class
     const liveClass = await LiveClass.findById(liveClassId).populate('subjectId', 'title');
     if (!liveClass) {
       return res.status(404).json({
@@ -42,16 +24,16 @@ const joinLiveClassController = async (req, res) => {
 
     // Enrollment check
     const student = await User.findById(studentId).select('role enrolledSubjects');
-    
+
     if (!student) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     if (student.role === 'student') {
       if (!student.enrolledSubjects?.includes(liveClass.subjectId._id)) {
-        return res.status(403).json({ 
-          success: false, 
-          message: `Not enrolled for subject: ${liveClass.subjectId.title}` 
+        return res.status(403).json({
+          success: false,
+          message: `Not enrolled for subject: ${liveClass.subjectId.title}`
         });
       }
     }
@@ -72,25 +54,27 @@ const joinLiveClassController = async (req, res) => {
     const joinRecord = new StudentLiveClassJoin({
       studentId,
       liveClassId,
+      deviceSessionId,
       deviceType,
       active: true
     });
 
     await joinRecord.save();
 
-    // Deactivate old joins for same student/class
+    // Deactivate old joins for same student/class (kick older devices)
     await StudentLiveClassJoin.updateMany(
       { studentId, liveClassId, active: true, _id: { $ne: joinRecord._id } },
       { active: false }
     );
 
+    // For the same student+class, the active session becomes the latest one.
     res.json({
       success: true,
       data: {
         joinUrl: liveClass.joinUrl,
         password: liveClass.password,
         status: liveClass.status,
-        message: 'Joined successfully. Device preference: ' + deviceType
+        message: 'Joined successfully. Active session switched.'
       }
     });
   } catch (error) {

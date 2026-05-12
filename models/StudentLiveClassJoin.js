@@ -11,6 +11,12 @@ const studentLiveClassJoinSchema = new mongoose.Schema({
     ref: 'LiveClass',
     required: true
   },
+  // Stable per-app-session/device session id
+  deviceSessionId: {
+    type: String,
+    required: true,
+    index: true
+  },
   deviceType: {
     type: String,
     enum: ['web', 'mobile'],
@@ -28,8 +34,11 @@ const studentLiveClassJoinSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index for quick lookup
-studentLiveClassJoinSchema.index({ studentId: 1, liveClassId: 1 }, { unique: true });
+// One active join per student+class is handled by controller logic.
+studentLiveClassJoinSchema.index({ studentId: 1, liveClassId: 1 });
+
+// Heartbeat lookup
+studentLiveClassJoinSchema.index({ studentId: 1, liveClassId: 1, deviceSessionId: 1 });
 
 module.exports = mongoose.model('StudentLiveClassJoin', studentLiveClassJoinSchema);
 

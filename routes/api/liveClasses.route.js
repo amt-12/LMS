@@ -14,9 +14,11 @@ const { endLiveClassController } = require('../../controller/zoom/endLiveClassCo
 const { updateLiveClassController } = require('../../controller/zoom/updateLiveClassController');
 const { deleteLiveClassController } = require('../../controller/zoom/deleteLiveClassController');
 const { recordingProxyController } = require('../../controller/zoom/recordingProxyController');
+const { heartbeatLiveClassJoinController } = require('../../controller/zoom/heartbeatLiveClassJoinController');
 
 // Signature for all
 router.post('/signature', authMiddleware, signatureController);
+
 
 // Admin only: create, get all
 router.post('/', authMiddleware, createLiveClassController);
@@ -47,6 +49,9 @@ router.delete('/:id', authMiddleware, deleteLiveClassController);
 
 // Student join
 router.post('/join', authMiddleware, joinLiveClassController);
+
+// Heartbeat (kicked device -> should exit)
+router.post('/join/heartbeat', authMiddleware, heartbeatLiveClassJoinController);
 
 module.exports = router;
 

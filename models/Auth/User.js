@@ -71,6 +71,12 @@ const userSchema = new mongoose.Schema(
     lastViolationAt: {
       type: Date,
       default: null
+    },
+    // Single active login session enforcement (one device at a time)
+    activeSessionId: {
+      type: String,
+      default: null,
+      index: true
     }
   },
   { timestamps: true }

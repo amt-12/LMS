@@ -39,9 +39,13 @@ const adminLogin = async (req, res) => {
     //   return res.status(403).json({ error: 'Access denied. Admin role required.' });
     // }
 
+    // Generate a new single-active session id and store it on the user.
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    await User.findByIdAndUpdate(user._id, { activeSessionId: sessionId });
+
     // Generate token
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user._id, role: user.role, sessionId },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
