@@ -229,6 +229,18 @@ class ZoomService {
   }
 
   /**
+   * Delete a Zoom cloud recording.
+   * Zoom records are tied to a meeting; deleting the meeting removes its cloud recording (depending on Zoom retention/settings).
+   *
+   * @param {string} meetingId - Zoom meeting ID (used by front-end as rec.meetingId)
+   */
+  async deleteRecording(meetingId) {
+    // Reuse deleteMeeting, as the current zoomService already supports meeting deletion.
+    return this.deleteMeeting(meetingId);
+  }
+
+
+  /**
    * Get cloud recordings for the user across the last N months.
    * Zoom API requires a 'from' date; max range per call is 1 month.
    * @param {string} userId - Zoom user ID or email (defaults to 'me')

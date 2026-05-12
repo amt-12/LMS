@@ -15,6 +15,8 @@ const { updateLiveClassController } = require('../../controller/zoom/updateLiveC
 const { deleteLiveClassController } = require('../../controller/zoom/deleteLiveClassController');
 const { recordingProxyController } = require('../../controller/zoom/recordingProxyController');
 const { heartbeatLiveClassJoinController } = require('../../controller/zoom/heartbeatLiveClassJoinController');
+const { deleteRecordingController } = require('../../controller/zoom/deleteRecordingController');
+
 
 // Signature for all
 router.post('/signature', authMiddleware, signatureController);
@@ -29,6 +31,9 @@ router.get('/recordings/all', authMiddleware, getRecordingsController);
 
 // Proxy stream for video playback (no auth needed for playback after login check, but keep auth for safety)
 router.get('/recordings/proxy', authMiddleware, recordingProxyController);
+
+// Admin: delete Zoom recording (cloud recording)
+router.delete('/recordings/delete', authMiddleware, deleteRecordingController);
 
 // Public/student: get single
 router.get('/:id', getLiveClassController);
