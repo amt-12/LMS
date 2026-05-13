@@ -35,13 +35,15 @@ const recordingProxyController = async (req, res) => {
       headers['Range'] = req.headers['range'];
     }
 
-    // We must handle redirects manually to preserve the 'Range' header
-    // Axios (and most clients) strip 'Range' and 'Authorization' when following redirects to a different domain
+    // We must handle redirects manually to find the final S3/CDN URL
     let currentUrl = authenticatedUrl;
     let zoomRes;
     let redirects = 0;
 
+    console.log(`[Proxy] Initial Request URL: ${video_url}`);
+    
     while (redirects < 10) {
+      console.log(`[Proxy] Fetching (Redirect ${redirects}): ${currentUrl}`);
       zoomRes = await axios.get(currentUrl, {
         responseType: 'stream',
         headers: {
@@ -49,46 +51,39 @@ const recordingProxyController = async (req, res) => {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         },
         maxRedirects: 0, // Handle manually
-        validateStatus: (status) => (status >= 200 && status < 400),
+        validateStatus: (status) => status >= 200 && status < 500,
         timeout: 60000,
       });
 
+      console.log(`[Proxy] Zoom Response Status: ${zoomRes.status}, Location: ${zoomRes.headers.location}`);
+
+      // Follow redirects manually to find the final S3/CDN URL
       if (zoomRes.status >= 300 && zoomRes.status < 400 && zoomRes.headers.location) {
         currentUrl = zoomRes.headers.location;
         redirects++;
-        // Resume stream for next hop
         zoomRes.data.destroy();
-      } else {
-        break;
+        continue;
       }
+
+      // Reached the final URL
+      console.log(`[Proxy] Final URL reached after ${redirects} redirects. Content-Type: ${zoomRes.headers['content-type']}`);
+      zoomRes.data.destroy();
+      break;
     }
 
-    // Forward relevant response headers with FORCED video/mp4 content type
-    // This is crucial for Android devices that fail to decode application/octet-stream
-    const responseHeaders = {
-      'Content-Type': 'video/mp4',
-      'Accept-Ranges': 'bytes',
-      'Cache-Control': 'public, max-age=3600',
-    };
-
-    if (zoomRes.headers['content-length']) {
-      responseHeaders['Content-Length'] = zoomRes.headers['content-length'];
-    }
-    if (zoomRes.headers['content-range']) {
-      responseHeaders['Content-Range'] = zoomRes.headers['content-range'];
+    if (zoomRes.status >= 400) {
+      return res.status(502).json({
+        success: false,
+        message: 'Failed to resolve video URL from Zoom',
+        zoomStatus: zoomRes.status,
+      });
     }
 
-    res.writeHead(zoomRes.status, responseHeaders);
-
-    // Pipe the video stream to the client
-    zoomRes.data.pipe(res);
-
-    zoomRes.data.on('error', (err) => {
-      console.error('[Proxy] Stream error:', err.message);
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, message: 'Stream error' });
-      }
-    });
+    // Redirect the client directly to the final S3/CDN media URL.
+    // This allows Android ExoPlayer to directly fetch from S3, which perfectly
+    // handles Range requests, Content-Length, and chunking natively.
+    // This prevents the 'c2.android.avc.decoder' crash caused by Node.js stream proxying.
+    return res.redirect(302, currentUrl);
 
   } catch (error) {
     console.error('[Proxy Controller] Error:', error.response?.status, error.message);
