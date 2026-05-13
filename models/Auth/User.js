@@ -73,10 +73,9 @@ const userSchema = new mongoose.Schema(
       default: null
     },
     // Single active login session enforcement (one device at a time)
-    // Support multiple concurrent active sessions per user (e.g., multiple devices)
-    activeSessionIds: {
-      type: [String],
-      default: [],
+    activeSessionId: {
+      type: String,
+      default: null,
       index: true
     }
   },
