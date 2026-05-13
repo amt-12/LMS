@@ -9,6 +9,7 @@ const login = require("../../controller/Auth/login");
 const verifyOtp = require("../../controller/Auth/verifyOtp");
 const resendOtp = require("../../controller/Auth/resendOtp");
 const adminLogin = require("../../controller/Auth/adminLogin");
+const logout = require("../../controller/Auth/logout");
 const forgotPassword = require("../../controller/Auth/forgotPassword");
 const resetPassword = require("../../controller/Auth/resetPassword");
 const { getProfile, updateProfile, deleteProfile, uploadProfileImage } = require("../../controller/Auth/profile");
@@ -42,4 +43,5 @@ router.put("/profile", protect, updateProfile);
 router.delete("/profile", protect, deleteProfile);
 router.put("/profile/image", protect, upload.single('image'), uploadProfileImage);
 
+router.post("/logout", protect, logout);
 module.exports = router;
