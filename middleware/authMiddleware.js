@@ -28,11 +28,19 @@ const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Attach minimal user info to req.user for controllers.
-    // NOTE: Single-device session enforcement (activeSessionId) has been disabled
-    // to allow the same student to stay logged in on multiple devices.
+    // Enforce single active session per user.
     if (decoded?.userId) {
       const User = require('../models/Auth/User');
-      const dbUser = await User.findById(decoded.userId).select('role status enrollment').lean();
+      const dbUser = await User.findById(decoded.userId).select('activeSessionId role status enrollment').lean();
+
+      if (!dbUser) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+
+      // If token sessionId doesn't match the DB activeSessionId => kick
+      if (decoded?.sessionId && dbUser.activeSessionId && decoded.sessionId !== dbUser.activeSessionId) {
+        return res.status(401).json({ message: 'Session expired' });
+      }
 
       if (!dbUser) {
         return res.status(401).json({ message: 'User not found' });
