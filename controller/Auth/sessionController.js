@@ -17,12 +17,10 @@ const checkActiveSession = async (req, res) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    // If this device's JWT sessionId is no longer active => return 401.
-    if (!sessionId || !dbUser.activeSessionId || sessionId !== dbUser.activeSessionId) {
-      return res.status(401).json({ message: 'Session expired' });
-    }
-
+    // Single-login enforcement removed.
+    // Always report success so the app won't logout due to activeSessionId mismatch.
     return res.json({ success: true });
+
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
   }
