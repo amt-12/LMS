@@ -60,6 +60,8 @@ class ZoomService {
           mute_upon_entry: true,
           password: this.generatePassword(),
           auto_recording: 'none',
+          hd_video: false,          // disable HD to reduce latency on mobile WebViews
+          audio: 'voip',            // force VoIP audio only for simpler audio streams
         },
       }, {
         headers: {

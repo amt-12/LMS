@@ -37,12 +37,9 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: 'User not found' });
       }
 
-      // Single-login enforcement removed (prevents false 'logged in on another device' issues)
-      // Previous logic: if token sessionId doesn't match DB activeSessionId => kick
-
-
-      if (!dbUser) {
-        return res.status(401).json({ message: 'User not found' });
+      // Single-login enforcement
+      if (decoded.sessionId && dbUser.activeSessionId && decoded.sessionId !== dbUser.activeSessionId) {
+        return res.status(401).json({ message: 'Logged in from another device' });
       }
 
       req.user = {

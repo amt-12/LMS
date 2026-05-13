@@ -17,8 +17,11 @@ const checkActiveSession = async (req, res) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    // Single-login enforcement removed.
-    // Always report success so the app won't logout due to activeSessionId mismatch.
+    // Single-login enforcement
+    if (sessionId && dbUser.activeSessionId && sessionId !== dbUser.activeSessionId) {
+      return res.status(401).json({ message: 'Logged in from another device' });
+    }
+
     return res.json({ success: true });
 
   } catch (error) {
