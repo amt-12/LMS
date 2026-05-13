@@ -23,6 +23,8 @@ const heartbeatLiveClassJoinController = async (req, res) => {
       active: true
     }).select('active');
 
+    // If this device was deactivated, do NOT tell the client to logout.
+    // Just report active=false so the UI can decide what to do.
     const isActive = !!activeJoin;
 
     return res.json({

@@ -17,12 +17,9 @@ const checkActiveSession = async (req, res) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    // If JWT doesn't have sessionId or DB doesn't have one yet, treat as invalid.
-    // This makes the single-session enforcement deterministic.
-    if (!sessionId || !dbUser.activeSessionId || sessionId !== dbUser.activeSessionId) {
-      return res.status(401).json({ message: 'Session expired' });
-    }
-
+    // Single-device session enforcement has been disabled.
+    // Keep heartbeat as a simple auth check so the app doesn't log out
+    // when the user logs in on another device.
     return res.json({ success: true });
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
