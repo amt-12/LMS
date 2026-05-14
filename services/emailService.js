@@ -128,8 +128,7 @@ async function sendLiveClassStartEmail(to, name, { title, joinUrl, password, sta
   const subject = `🔴 Live Class Started: ${title}`;
   const message = `
     <h3 style="color:#13294B;">Live class "${title}" has started!</h3>
-    <p>Join URL: ${joinUrl}</p>
-    <p>Password: ${password}</p>
+
   `;
 
   await sendEmail(to, subject, { name, subject, message });
