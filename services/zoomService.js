@@ -196,7 +196,9 @@ class ZoomService {
         duration,
         timezone: 'UTC',
         settings: {
-          auto_recording: 'none'
+          auto_recording: 'none',
+          hd_video: false,
+          audio: 'voip'
         }
       }, {
         headers: {
@@ -364,7 +366,9 @@ class ZoomService {
         password: password,
         settings: {
           password: password,
-          auto_recording: 'none'
+          auto_recording: 'none',
+          hd_video: false,
+          audio: 'voip'
         }
       }, {
         headers: {
