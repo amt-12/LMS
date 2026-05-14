@@ -55,7 +55,7 @@ class ZoomService {
         timezone: 'UTC',
         settings: {
           host_video: true,
-          participant_video: true,
+          participant_video: false, // Set to false to avoid 15+ spontaneous cameras overloading WebView bandwidth/CPU upon entry
           join_before_host: false,
           mute_upon_entry: true,
           password: this.generatePassword(),
@@ -198,7 +198,9 @@ class ZoomService {
         settings: {
           auto_recording: 'none',
           hd_video: false,
-          audio: 'voip'
+          audio: 'voip',
+          participant_video: false, // Enforce disabled participant video on updates for WebView scaling stability
+          mute_upon_entry: true     // Enforce mute on entry to prevent audio echo cascades
         }
       }, {
         headers: {
@@ -368,7 +370,9 @@ class ZoomService {
           password: password,
           auto_recording: 'none',
           hd_video: false,
-          audio: 'voip'
+          audio: 'voip',
+          participant_video: false, // Enforce scaling stability settings
+          mute_upon_entry: true
         }
       }, {
         headers: {
