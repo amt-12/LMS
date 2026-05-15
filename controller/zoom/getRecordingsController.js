@@ -94,7 +94,7 @@ const getRecordingsController = async (req, res) => {
             );
           }
 
-          const payload = {
+          const basePayload = {
             id: rec.uuid,
             meetingId: rec.id,
             title: liveClass ? liveClass.title : rec.topic,
@@ -111,6 +111,8 @@ const getRecordingsController = async (req, res) => {
             proxy_url: '',
           };
 
+          const payloads = [];
+
           // Handle recording files
           if (
             rec.recording_files &&
@@ -121,42 +123,58 @@ const getRecordingsController = async (req, res) => {
               (f) => f.status === 'completed' || !f.status
             );
 
-            // Prefer MP4 files
-            const mp4File = completedFiles.find(
-              (f) => f.file_type === 'MP4'
-            );
+            const mp4Files = completedFiles.filter((f) => f.file_type === 'MP4');
 
-            if (mp4File) {
-              payload.video_url = mp4File.download_url || '';
+            if (mp4Files.length > 0) {
+              // Group MP4 files by segment (recording_start)
+              const segments = {};
+              mp4Files.forEach((f) => {
+                const start = f.recording_start || f.id;
+                if (!segments[start]) {
+                  segments[start] = [];
+                }
+                segments[start].push(f);
+              });
 
-              payload.play_url =
-                mp4File.play_url ||
-                mp4File.download_url ||
-                '';
+              let partIndex = 1;
+              const hasMultipleSegments = Object.keys(segments).length > 1;
 
-              // Proxy URL for CORS-safe playback
-              if (payload.video_url) {
-                payload.proxy_url =
-                  `/api/live-classes/recordings/proxy?video_url=` +
-                  encodeURIComponent(payload.video_url);
+              for (const start in segments) {
+                const segmentFiles = segments[start];
+                // Prefer shared_screen_with_speaker_view
+                let bestFile = segmentFiles.find((f) => f.recording_type === 'shared_screen_with_speaker_view');
+                if (!bestFile) bestFile = segmentFiles.find((f) => f.recording_type === 'shared_screen_with_gallery_view');
+                if (!bestFile) bestFile = segmentFiles.find((f) => f.recording_type === 'speaker_view');
+                if (!bestFile) bestFile = segmentFiles[0];
+
+                const pl = { ...basePayload };
+                if (hasMultipleSegments) {
+                  pl.title = `${pl.title} (Part ${partIndex})`;
+                }
+                // Use the file id to make the payload id unique
+                pl.id = `${rec.uuid}-${bestFile.id || partIndex}`;
+                pl.video_url = bestFile.download_url || '';
+                pl.play_url = bestFile.play_url || bestFile.download_url || '';
+                if (pl.video_url) {
+                  pl.proxy_url = `/api/live-classes/recordings/proxy?video_url=` + encodeURIComponent(pl.video_url);
+                }
+                
+                payloads.push(pl);
+                partIndex++;
               }
             } else {
               // Fallback to first available completed file
               const videoFile = completedFiles[0];
-
               if (videoFile) {
-                payload.video_url =
-                  videoFile.download_url || '';
-
-                payload.play_url =
-                  videoFile.play_url ||
-                  videoFile.download_url ||
-                  '';
+                const pl = { ...basePayload };
+                pl.video_url = videoFile.download_url || '';
+                pl.play_url = videoFile.play_url || videoFile.download_url || '';
+                payloads.push(pl);
               }
             }
           }
 
-          return payload;
+          return payloads.length > 0 ? payloads : null;
         } catch (innerError) {
           console.error(
             `[getRecordingsController] Error processing meeting ${rec.id}:`,
@@ -169,9 +187,9 @@ const getRecordingsController = async (req, res) => {
     );
 
     // Remove invalid/null recordings
-    const validRecordings = enrichedRecordings.filter(
-      (rec) => rec && (rec.play_url || rec.video_url)
-    );
+    const validRecordings = enrichedRecordings
+      .flat()
+      .filter((rec) => rec && (rec.play_url || rec.video_url));
 
     // Sort newest first
     validRecordings.sort(
