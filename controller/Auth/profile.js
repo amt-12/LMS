@@ -9,8 +9,9 @@ const getProfile = async (req, res) => {
     const userId = req.user.userId || req.user._id;
     const user = await User.findById(userId)
       .populate("enrolledCourses", "title description")
-.select(
-        "name email phone address profileImage role status enrollment isTemp course createdAt enrolledCourses"
+      .populate("enrolledSubjects", "title")
+      .select(
+        "name email phone address profileImage role status enrollment isTemp course createdAt enrolledCourses enrolledSubjects"
       )
       .lean();
 
@@ -44,6 +45,7 @@ const getProfile = async (req, res) => {
         enrollment: user.enrollment || "inactive",
         course: user.course,
         enrolledCourses: user.enrolledCourses || [],
+        enrolledSubjects: user.enrolledSubjects ? user.enrolledSubjects.map(s => s.title || s) : [],
         joined: user.createdAt,
       },
     });
@@ -68,7 +70,7 @@ const updateProfile = async (req, res) => {
     const user = await User.findByIdAndUpdate(userId, updateData, {
       new: true,
       runValidators: true,
-}).select("name email phone address profileImage role status enrollment isTemp course");
+    }).populate("enrolledSubjects", "title").select("name email phone address profileImage role status enrollment isTemp course enrolledSubjects");
 
     if (!user || user.deletedAt) {
       return res.status(404).json({ error: "User not found" });
@@ -91,6 +93,7 @@ const updateProfile = async (req, res) => {
             : user.status,
         enrollment: user.enrollment || "inactive",
         course: user.course,
+        enrolledSubjects: user.enrolledSubjects ? user.enrolledSubjects.map(s => s.title || s) : [],
       },
     });
   } catch (error) {
