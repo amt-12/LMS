@@ -137,9 +137,17 @@ const getRecordingsController = async (req, res) => {
               });
 
               let partIndex = 1;
-              const hasMultipleSegments = Object.keys(segments).length > 1;
+              const sortedStarts = Object.keys(segments).sort((a, b) => {
+                const timeA = new Date(a).getTime();
+                const timeB = new Date(b).getTime();
+                if (!isNaN(timeA) && !isNaN(timeB)) {
+                  return timeA - timeB; // Earliest first
+                }
+                return a.localeCompare(b);
+              });
+              const hasMultipleSegments = sortedStarts.length > 1;
 
-              for (const start in segments) {
+              for (const start of sortedStarts) {
                 const segmentFiles = segments[start];
                 // Prefer shared_screen_with_speaker_view
                 let bestFile = segmentFiles.find((f) => f.recording_type === 'shared_screen_with_speaker_view');
@@ -151,6 +159,11 @@ const getRecordingsController = async (req, res) => {
                 if (hasMultipleSegments) {
                   pl.title = `${pl.title} (Part ${partIndex})`;
                 }
+                // Set the specific segment's start time instead of the meeting start time
+                if (bestFile.recording_start) {
+                  pl.date = bestFile.recording_start;
+                }
+                
                 // Use the file id to make the payload id unique
                 pl.id = `${rec.uuid}-${bestFile.id || partIndex}`;
                 pl.video_url = bestFile.download_url || '';
