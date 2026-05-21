@@ -47,7 +47,7 @@ const adminLogin = async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, role: user.role, sessionId },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '365d' }
     );
 
     const safeUser = {
@@ -62,7 +62,7 @@ const adminLogin = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000
+      maxAge: 365 * 24 * 60 * 60 * 1000
     });
 
     res.status(200).json({
