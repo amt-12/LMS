@@ -1,24 +1,20 @@
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 
 const isProduction = process.env.NODE_ENV === 'production';
-const REGION = 'ap-south-1';
-const FROM_EMAIL = 'no-reply@abhishekjudicialacademy.in';
-const TEST_EMAIL = 'no-reply@abhishekjudicialacademy.in';
+const FROM_EMAIL = process.env.SMTP_EMAIL || 'abhishekjudicialacademy@gmail.com';
+const TEST_EMAIL = FROM_EMAIL;
 
-console.log(`Initializing AWS SES client | Env: ${process.env.NODE_ENV || 'development'} | Region: ${REGION} | From: ${FROM_EMAIL}`);
+console.log(`Initializing Nodemailer transporter | Env: ${process.env.NODE_ENV || 'development'} | From: ${FROM_EMAIL}`);
 
-
-
-const sesClient = new SESClient({
-  region: REGION,
-  credentials: {
-    accessKeyId: (process.env.AWS_ACCESS_KEY_ID || '').trim(),
-    secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY || '').trim()
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: FROM_EMAIL,
+    pass: process.env.SMTP_PASS || 'tlnolhhicwxikfbo'
   }
 });
-
 
 function compileTemplate(templatePath, data = {}) {
   try {
@@ -39,54 +35,37 @@ function compileTemplate(templatePath, data = {}) {
 
 async function sendEmail(to, subject, data = {}) {
   console.log(`🔄 Attempting to send email to: ${to}, subject: ${subject}`);
-  console.log('SES From:', FROM_EMAIL, '| Sandbox:', !isProduction);
+  console.log('Nodemailer From:', FROM_EMAIL, '| Sandbox:', !isProduction);
 
   try {
     const html = compileTemplate(null, data);
 
-    const params = {
-      Destination: {
-        ToAddresses: [to],
-      },
-      Message: {
-        Body: {
-          Html: {
-            Charset: 'UTF-8',
-            Data: html,
-          },
-        },
-        Subject: {
-          Charset: 'UTF-8',
-          Data: subject,
-        },
-      },
-      Source: FROM_EMAIL,
-      ...(isProduction || {
-        ConfigurationSetName: undefined, // Optional
-      }),
+    const mailOptions = {
+      from: `"Abhishek's Judicial Academy" <${FROM_EMAIL}>`,
+      to,
+      subject,
+      html
     };
 
     // Sandbox mode for dev
     if (!isProduction) {
-      params.Destination.CcAddresses = [TEST_EMAIL];
+      mailOptions.cc = TEST_EMAIL;
       console.log(`🧪 Sandbox mode: CC to test email ${TEST_EMAIL}`);
     }
 
-    const command = new SendEmailCommand(params);
-    const result = await sesClient.send(command);
+    const result = await transporter.sendMail(mailOptions);
 
-    console.log(`✅ Email sent successfully to ${to} | MessageId: ${result.MessageId} | Subject: ${subject}`);
+    console.log(`✅ Email sent successfully to ${to} | MessageId: ${result.messageId} | Subject: ${subject}`);
     return true;
   } catch (error) {
-    console.error(`❌ SES Email FAILED to ${to}:`, error.message);
-    if (error.name) console.error('Error name:', error.name);
-    if (error.$metadata) console.error('HTTP Status:', error.$metadata.httpStatusCode);
+    console.error(`❌ Email FAILED to ${to}:`, error.message);
+    if (error.code) console.error('Error code:', error.code);
+    if (error.response) console.error('Response:', error.response);
     throw error;
   }
 }
 
 async function sendOtpEmail(to, otp, name) {
-
   try {
     await sendEmail(to, "Abhishek's Judicial Academy - Your OTP Code", {
       name,
@@ -108,7 +87,6 @@ async function sendOtpEmail(to, otp, name) {
   }
 }
 
-// Other functions (unchanged, call sendEmail)
 async function sendWelcomeEmail(to, name, action = 'Welcome') {
   const subject = action === 'Register' ? "Welcome to Abhishek's Judicial Academy!" : 'Welcome Back to LMS!';
   const message = action === 'Register'
@@ -166,18 +144,14 @@ async function sendLiveClassStartEmail(to, name, { title, joinUrl, password, sta
 }
 
 // Startup verification
-setImmediate(async () => {
-  try {
-    const command = new SendEmailCommand({
-      Source: FROM_EMAIL,
-      Destination: { ToAddresses: [TEST_EMAIL] }, // Dummy
-      Message: { Subject: { Data: 'Test', Charset: 'UTF-8' }, Body: { Text: { Data: 'Test SES connection', Charset: 'UTF-8' } } }
-    });
-    await sesClient.send(command);
-    console.log('✅ SES client READY');
-  } catch (err) {
-    console.error('🚨 SES client verification FAILED (normal in sandbox if unverified):', err.message);
-  }
+setImmediate(() => {
+  transporter.verify((err, success) => {
+    if (err) {
+      console.error('🚨 Email transporter FAILED verification:', err.message);
+    } else {
+      console.log('✅ Email transporter READY');
+    }
+  });
 });
 
 async function sendPasswordResetEmail(to, code, name) {
@@ -198,4 +172,3 @@ async function sendPasswordResetEmail(to, code, name) {
 }
 
 module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail, sendEnrollmentEmail, sendUnenrollmentEmail, sendLiveClassStartEmail, sendPasswordResetEmail };
-
