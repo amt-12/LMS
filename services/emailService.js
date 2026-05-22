@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const isProduction = process.env.NODE_ENV === 'production';
-const FROM_EMAIL = process.env.SMTP_EMAIL || 'abhishekjudicialacademy@gmail.com';
+const FROM_EMAIL = process.env.SMTP_EMAIL || 'amrit0207232@gmail.com';
 const TEST_EMAIL = FROM_EMAIL;
 
 console.log(`Initializing Nodemailer transporter | Env: ${process.env.NODE_ENV || 'development'} | From: ${FROM_EMAIL}`);
@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: FROM_EMAIL,
-    pass: process.env.SMTP_PASS || 'tlnolhhicwxikfbo'
+    pass: process.env.SMTP_PASS || 'teehrkceyovghqjb'
   }
 });
 
@@ -39,12 +39,15 @@ async function sendEmail(to, subject, data = {}) {
 
   try {
     const html = compileTemplate(null, data);
+    // Create a plain text fallback from the HTML to reduce spam score
+    const text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 
     const mailOptions = {
       from: `"Abhishek's Judicial Academy" <${FROM_EMAIL}>`,
       to,
       subject,
-      html
+      html,
+      text
     };
 
     // Sandbox mode for dev
