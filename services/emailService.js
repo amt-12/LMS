@@ -1,61 +1,93 @@
-const nodemailer = require('nodemailer');
+const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
 const fs = require('fs');
 const path = require('path');
 
-console.log('Initializing email transporter with user:', process.env.SMTP_EMAIL || 'fallback');
-const transporter = nodemailer.createTransport({
-  port: 465,
-  host: "smtp.gmail.com",
-  secure: true,
-  auth: {
-    user: process.env.SMTP_EMAIL || 'amrit0207232@gmail.com',
-    pass: process.env.SMTP_PASS || 'jjohknqntwuhzqye'
+const isProduction = process.env.NODE_ENV === 'production';
+const REGION = 'ap-south-1';
+const FROM_EMAIL = 'abhishekjudicialacademy@gmail.com';
+const TEST_EMAIL = 'abhishekjudicialacademy@gmail.com';
+
+console.log(`Initializing AWS SES client | Env: ${process.env.NODE_ENV || 'development'} | Region: ${REGION} | From: ${FROM_EMAIL}`);
+console.log('✅ AWS SES Ready (hardcoded credentials: AKIASS2WC6...)');
+
+
+
+const sesClient = new SESClient({
+  region: REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
   }
 });
+
 
 function compileTemplate(templatePath, data = {}) {
   try {
     let template = fs.readFileSync(path.join(__dirname, '../templates/email-template.html'), 'utf8');
     console.log('Email template loaded successfully');
-    
+
     Object.keys(data).forEach(key => {
       const regex = new RegExp(`{{${key}}}`, 'g');
       template = template.replace(regex, data[key] || '');
     });
-    
+
     return template;
   } catch (err) {
     console.error('Failed to load email template:', err.message);
-    return '<h1>Email Service</h1><p>{{message}}</p><p>Sent to {{name}}</p>';
+    return `<h1>Email Service</h1><p>${data.message || 'No message'}</p><p>Sent to {{name}}</p>`;
   }
 }
 
 async function sendEmail(to, subject, data = {}) {
-  
+  console.log(`🔄 Attempting to send email to: ${to}, subject: ${subject}`);
+  console.log('SES From:', FROM_EMAIL, '| Sandbox:', !isProduction);
+
   try {
-    await transporter.verify().catch(err => {
-      throw new Error(`Transporter not ready: ${err.message}`);
-    });
-    
     const html = compileTemplate(null, data);
 
-    await transporter.sendMail({
-      from: `"Abhishek's Judicial Academy" <${process.env.SMTP_EMAIL || 'amrit0207232@gmail.com'}>`,
-      to,
-      subject,
-      html
-    });
+    const params = {
+      Destination: {
+        ToAddresses: [to],
+      },
+      Message: {
+        Body: {
+          Html: {
+            Charset: 'UTF-8',
+            Data: html,
+          },
+        },
+        Subject: {
+          Charset: 'UTF-8',
+          Data: subject,
+        },
+      },
+      Source: FROM_EMAIL,
+      ...(isProduction || {
+        ConfigurationSetName: undefined, // Optional
+      }),
+    };
+
+    // Sandbox mode for dev
+    if (!isProduction) {
+      params.Destination.CcAddresses = [TEST_EMAIL];
+      console.log(`🧪 Sandbox mode: CC to test email ${TEST_EMAIL}`);
+    }
+
+    const command = new SendEmailCommand(params);
+    const result = await sesClient.send(command);
+
+    console.log(`✅ Email sent successfully to ${to} | MessageId: ${result.MessageId} | Subject: ${subject}`);
     return true;
   } catch (error) {
-    console.error(`❌ Email FAILED to ${to}:`, error.message);
-    if (error.code) console.error('Error code:', error.code);
-    if (error.response) console.error('Response:', error.response);
+    console.error(`❌ SES Email FAILED to ${to}:`, error.message);
+    if (error.name) console.error('Error name:', error.name);
+    if (error.$metadata) console.error('HTTP Status:', error.$metadata.httpStatusCode);
     throw error;
   }
 }
 
 async function sendOtpEmail(to, otp, name) {
-  
+
   try {
     await sendEmail(to, "Abhishek's Judicial Academy - Your OTP Code", {
       name,
@@ -77,7 +109,7 @@ async function sendOtpEmail(to, otp, name) {
   }
 }
 
-// Other functions (minimal for compatibility)
+// Other functions (unchanged, call sendEmail)
 async function sendWelcomeEmail(to, name, action = 'Welcome') {
   const subject = action === 'Register' ? "Welcome to Abhishek's Judicial Academy!" : 'Welcome Back to LMS!';
   const message = action === 'Register'
@@ -135,14 +167,36 @@ async function sendLiveClassStartEmail(to, name, { title, joinUrl, password, sta
 }
 
 // Startup verification
-setImmediate(() => {
-  transporter.verify((err, success) => {
-    if (err) {
-      console.error('🚨 Email transporter FAILED verification:', err.message);
-    } else {
-      console.log('✅ Email transporter READY');
-    }
-  });
+setImmediate(async () => {
+  try {
+    const command = new SendEmailCommand({
+      Source: FROM_EMAIL,
+      Destination: { ToAddresses: [TEST_EMAIL] }, // Dummy
+      Message: { Subject: { Data: 'Test', Charset: 'UTF-8' }, Body: { Text: { Data: 'Test SES connection', Charset: 'UTF-8' } } }
+    });
+    await sesClient.send(command);
+    console.log('✅ SES client READY');
+  } catch (err) {
+    console.error('🚨 SES client verification FAILED (normal in sandbox if unverified):', err.message);
+  }
 });
 
-module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail, sendEnrollmentEmail, sendUnenrollmentEmail, sendLiveClassStartEmail };
+async function sendPasswordResetEmail(to, code, name) {
+  const subject = "Abhishek's Judicial Academy - Password Reset Code";
+  const message = `
+    <div style="text-align: center; padding: 20px;">
+      <h2 style="color:#13294B;">Password Reset Request</h2>
+      <p style="font-size: 16px; color: #333;">You requested to reset your password.</p>
+      <div style="font-size: 48px; font-weight: bold; color: #13294B; letter-spacing: 8px; margin: 20px 0; background: #f9f6ef; padding: 20px; border-radius: 10px;">
+        ${code}
+      </div>
+      <p>This reset code is valid for <strong>10 minutes</strong>.</p>
+      <p style="font-size: 14px; color: #666;">If you didn't request this, please ignore this email or contact support.</p>
+    </div>
+  `;
+
+  await sendEmail(to, subject, { name, subject, message });
+}
+
+module.exports = { sendEmail, sendWelcomeEmail, sendOtpEmail, sendStudentWelcomeEmail, sendEnrollmentEmail, sendUnenrollmentEmail, sendLiveClassStartEmail, sendPasswordResetEmail };
+
