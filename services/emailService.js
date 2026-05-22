@@ -4,8 +4,8 @@ const path = require('path');
 
 const isProduction = process.env.NODE_ENV === 'production';
 const REGION = 'ap-south-1';
-const FROM_EMAIL = 'abhishekjudicialacademy@gmail.com';
-const TEST_EMAIL = 'abhishekjudicialacademy@gmail.com';
+const FROM_EMAIL = 'no-reply@abhishekjudicialacademy.in';
+const TEST_EMAIL = 'no-reply@abhishekjudicialacademy.in';
 
 console.log(`Initializing AWS SES client | Env: ${process.env.NODE_ENV || 'development'} | Region: ${REGION} | From: ${FROM_EMAIL}`);
 
