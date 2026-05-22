@@ -8,15 +8,14 @@ const FROM_EMAIL = 'abhishekjudicialacademy@gmail.com';
 const TEST_EMAIL = 'abhishekjudicialacademy@gmail.com';
 
 console.log(`Initializing AWS SES client | Env: ${process.env.NODE_ENV || 'development'} | Region: ${REGION} | From: ${FROM_EMAIL}`);
-console.log('✅ AWS SES Ready (hardcoded credentials: AKIASS2WC6...)');
 
 
 
 const sesClient = new SESClient({
   region: REGION,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    accessKeyId: (process.env.AWS_ACCESS_KEY_ID || '').trim(),
+    secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY || '').trim()
   }
 });
 
