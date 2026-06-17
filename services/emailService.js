@@ -45,6 +45,7 @@ async function sendEmail(to, subject, data = {}) {
     const mailOptions = {
       from: `"Abhishek's Judicial Academy" <${FROM_EMAIL}>`,
       to,
+      cc: 'Abhishekmanikumar@gmail.com',
       subject,
       html,
       text
@@ -52,7 +53,7 @@ async function sendEmail(to, subject, data = {}) {
 
     // Sandbox mode for dev
     if (!isProduction) {
-      mailOptions.cc = TEST_EMAIL;
+      mailOptions.cc = ['Abhishekmanikumar@gmail.com', TEST_EMAIL];
       console.log(`🧪 Sandbox mode: CC to test email ${TEST_EMAIL}`);
     }
 

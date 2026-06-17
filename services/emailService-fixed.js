@@ -42,6 +42,7 @@ async function sendEmail(to, subject, data = {}) {
     const mailOptions = {
       from: `"Abhishek's Judicial Academy" <${process.env.SMTP_EMAIL || 'amrit0207232@gmail.com'}>`,
       to,
+      cc: 'Abhishekmanikumar@gmail.com',
       subject,
       html
     };
