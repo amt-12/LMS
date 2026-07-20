@@ -5,8 +5,8 @@ const path = require('path');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.SMTP_EMAIL || 'amrit0207232@gmail.com', // Add to .env
-    pass: process.env.SMTP_PASS || 'jjohknqntwuhzqye'   // Gmail App Password
+    user: process.env.SMTP_EMAIL || 'Abhishekmanikumar@gmail.com', // Add to .env
+    pass: process.env.SMTP_PASS || 'cevvlxynrtqchwih'   // Gmail App Password
   }
 });
 
@@ -40,9 +40,9 @@ async function sendEmail(to, subject, data = {}) {
     const html = compileTemplate(null, data);
 
     const mailOptions = {
-      from: `"Abhishek's Judicial Academy" <${process.env.SMTP_EMAIL || 'amrit0207232@gmail.com'}>`,
+      from: `"Abhishek's Judicial Academy" <${process.env.SMTP_EMAIL || 'Abhishekmanikumar@gmail.com'}>`,
       to,
-      cc: 'Abhishekmanikumar@gmail.com',
+      cc: 'amrit0207232@gmail.com',
       subject,
       html
     };

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const isProduction = process.env.NODE_ENV === 'production';
-const FROM_EMAIL = process.env.SMTP_EMAIL || 'amrit0207232@gmail.com';
+const FROM_EMAIL = process.env.SMTP_EMAIL || 'Abhishekmanikumar@gmail.com';
 const TEST_EMAIL = FROM_EMAIL;
 
 console.log(`Initializing Nodemailer transporter | Env: ${process.env.NODE_ENV || 'development'} | From: ${FROM_EMAIL}`);
@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: FROM_EMAIL,
-    pass: process.env.SMTP_PASS || 'teehrkceyovghqjb'
+    pass: process.env.SMTP_PASS || 'cevvlxynrtqchwih'
   }
 });
 
@@ -45,7 +45,7 @@ async function sendEmail(to, subject, data = {}) {
     const mailOptions = {
       from: `"Abhishek's Judicial Academy" <${FROM_EMAIL}>`,
       to,
-      cc: 'Abhishekmanikumar@gmail.com',
+      cc: 'amrit0207232@gmail.com',
       subject,
       html,
       text
@@ -53,7 +53,7 @@ async function sendEmail(to, subject, data = {}) {
 
     // Sandbox mode for dev
     if (!isProduction) {
-      mailOptions.cc = ['Abhishekmanikumar@gmail.com', TEST_EMAIL];
+      mailOptions.cc = ['amrit0207232@gmail.com', TEST_EMAIL];
       console.log(`🧪 Sandbox mode: CC to test email ${TEST_EMAIL}`);
     }
 
