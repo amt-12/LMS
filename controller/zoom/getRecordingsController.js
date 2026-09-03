@@ -48,46 +48,64 @@ const getRecordingsController = async (req, res) => {
       const userEnrolledSubjIds = (user.enrolledSubjects || []).map((id) =>
         id.toString()
       );
-      const userEnrolledCourseIds = (user.enrolledCourses || []).map((id) =>
-        id.toString()
-      );
 
-      // Check if user.course is a string (e.g. "Judiciary")
-      let extraCourseIds = [];
-      if (
-        user.course &&
-        typeof user.course === 'string' &&
-        user.course.trim().length > 0
-      ) {
-        const matchingCourses = await Course.find({
-          title: { $regex: new RegExp(`^${user.course.trim()}$`, 'i') },
-        })
-          .select('_id')
-          .lean();
-        extraCourseIds = matchingCourses.map((c) => c._id.toString());
-      }
-
-      const allCourseIds = [
-        ...new Set([...userEnrolledCourseIds, ...extraCourseIds]),
-      ];
-
-      // Add directly enrolled subject IDs
-      userEnrolledSubjIds.forEach((id) => allowedSubjectIds.add(id));
-
-      // Find subjects belonging to enrolled courses or matching enrolledSubject IDs
-      const queryOr = [];
+      // PRECEDENCE RULE:
+      // If student is assigned specific subjects in enrolledSubjects, ONLY allow those subjects!
       if (userEnrolledSubjIds.length > 0) {
-        queryOr.push({ _id: { $in: userEnrolledSubjIds } });
-      }
-      if (allCourseIds.length > 0) {
-        queryOr.push({ courseId: { $in: allCourseIds } });
-      }
+        userEnrolledSubjIds.forEach((id) => allowedSubjectIds.add(id));
 
-      if (queryOr.length > 0) {
+        // Also query DB for matching subject ObjectIds and titles so we match by both ID and Title
+        const queryOr = [{ _id: { $in: userEnrolledSubjIds } }];
+        queryOr.push({ title: { $in: userEnrolledSubjIds } });
+
         const matchedSubjects = await Subject.find({ $or: queryOr })
-          .select('_id')
+          .select('_id title')
           .lean();
-        matchedSubjects.forEach((s) => allowedSubjectIds.add(s._id.toString()));
+
+        matchedSubjects.forEach((s) => {
+          allowedSubjectIds.add(s._id.toString());
+          if (s.title) {
+            allowedSubjectIds.add(s.title.trim().toLowerCase());
+          }
+        });
+      } else {
+        // Fallback: If NO specific enrolledSubjects assigned, allow all subjects under enrolledCourses / course name
+        const userEnrolledCourseIds = (user.enrolledCourses || []).map((id) =>
+          id.toString()
+        );
+
+        let extraCourseIds = [];
+        if (
+          user.course &&
+          typeof user.course === 'string' &&
+          user.course.trim().length > 0
+        ) {
+          const matchingCourses = await Course.find({
+            title: { $regex: new RegExp(`^${user.course.trim()}$`, 'i') },
+          })
+            .select('_id')
+            .lean();
+          extraCourseIds = matchingCourses.map((c) => c._id.toString());
+        }
+
+        const allCourseIds = [
+          ...new Set([...userEnrolledCourseIds, ...extraCourseIds]),
+        ];
+
+        if (allCourseIds.length > 0) {
+          const matchedSubjects = await Subject.find({
+            courseId: { $in: allCourseIds },
+          })
+            .select('_id title')
+            .lean();
+
+          matchedSubjects.forEach((s) => {
+            allowedSubjectIds.add(s._id.toString());
+            if (s.title) {
+              allowedSubjectIds.add(s.title.trim().toLowerCase());
+            }
+          });
+        }
       }
     }
 
@@ -138,7 +156,15 @@ const getRecordingsController = async (req, res) => {
             const recSubjectId = liveClass.subjectId._id
               ? liveClass.subjectId._id.toString()
               : liveClass.subjectId.toString();
-            if (!allowedSubjectIds.has(recSubjectId)) {
+            const recSubjectTitle = liveClass.subjectId.title
+              ? liveClass.subjectId.title.trim().toLowerCase()
+              : (liveClass.subjectId.name ? liveClass.subjectId.name.trim().toLowerCase() : null);
+
+            const isAllowed =
+              allowedSubjectIds.has(recSubjectId) ||
+              (recSubjectTitle && allowedSubjectIds.has(recSubjectTitle));
+
+            if (!isAllowed) {
               return null;
             }
           }

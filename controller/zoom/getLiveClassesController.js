@@ -19,15 +19,17 @@ const getLiveClassesController = async (req, res) => {
     if (user.role === 'student') {
       if (user.enrollment === 'active') {
         const Subject = require('../../models/Subject');
-        const allowedSubjectIds = [...(user.enrolledSubjects || [])];
+        let allowedSubjectIds = [];
 
-        if (user.enrolledCourses && user.enrolledCourses.length > 0) {
+        if (user.enrolledSubjects && user.enrolledSubjects.length > 0) {
+          allowedSubjectIds = [...user.enrolledSubjects];
+        } else if (user.enrolledCourses && user.enrolledCourses.length > 0) {
           const courseSubjects = await Subject.find({
             courseId: { $in: user.enrolledCourses },
           })
             .select('_id')
             .lean();
-          courseSubjects.forEach((s) => allowedSubjectIds.push(s._id));
+          allowedSubjectIds = courseSubjects.map((s) => s._id);
         }
 
         query.subjectId = { $in: allowedSubjectIds };
