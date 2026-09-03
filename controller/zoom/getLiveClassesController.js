@@ -18,11 +18,22 @@ const getLiveClassesController = async (req, res) => {
     // For students
     if (user.role === 'student') {
       if (user.enrollment === 'active') {
-        // Enrolled students see classes for enrolled subjects/courses
-        query.subjectId = { $in: user.enrolledSubjects };
+        const Subject = require('../../models/Subject');
+        const allowedSubjectIds = [...(user.enrolledSubjects || [])];
+
+        if (user.enrolledCourses && user.enrolledCourses.length > 0) {
+          const courseSubjects = await Subject.find({
+            courseId: { $in: user.enrolledCourses },
+          })
+            .select('_id')
+            .lean();
+          courseSubjects.forEach((s) => allowedSubjectIds.push(s._id));
+        }
+
+        query.subjectId = { $in: allowedSubjectIds };
       } else {
-        // Unenrolled students see demo classes only (handled frontend or separate endpoint)
-        query = { isDemo: true }; // Assume demo flag or filter frontend
+        // Unenrolled students see demo classes only
+        query = { isDemo: true };
       }
     }
     

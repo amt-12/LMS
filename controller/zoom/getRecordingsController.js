@@ -1,5 +1,8 @@
 const zoomService = require('../../services/zoomService');
 const LiveClass = require('../../models/LiveClass');
+const User = require('../../models/Auth/User');
+const Subject = require('../../models/Subject');
+const Course = require('../../models/Course');
 
 // In-memory cache to prevent rate limit hits on password updates
 // Key: meetingId, Value: { passwordRemoved: true, timestamp }
@@ -16,6 +19,78 @@ const getRecordingsController = async (req, res) => {
   }
 
   try {
+    const userId = req.user?.userId || req.user?._id || req.user?.id;
+    const user = await User.findById(userId)
+      .select('role status enrollment course enrolledCourses enrolledSubjects')
+      .lean();
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Determine allowed subject IDs for students
+    let allowedSubjectIds = null;
+
+    if (user.role === 'student') {
+      if (user.enrollment !== 'active' || user.status === 'inactive') {
+        return res.json({
+          success: true,
+          count: 0,
+          data: [],
+        });
+      }
+
+      allowedSubjectIds = new Set();
+
+      const userEnrolledSubjIds = (user.enrolledSubjects || []).map((id) =>
+        id.toString()
+      );
+      const userEnrolledCourseIds = (user.enrolledCourses || []).map((id) =>
+        id.toString()
+      );
+
+      // Check if user.course is a string (e.g. "Judiciary")
+      let extraCourseIds = [];
+      if (
+        user.course &&
+        typeof user.course === 'string' &&
+        user.course.trim().length > 0
+      ) {
+        const matchingCourses = await Course.find({
+          title: { $regex: new RegExp(`^${user.course.trim()}$`, 'i') },
+        })
+          .select('_id')
+          .lean();
+        extraCourseIds = matchingCourses.map((c) => c._id.toString());
+      }
+
+      const allCourseIds = [
+        ...new Set([...userEnrolledCourseIds, ...extraCourseIds]),
+      ];
+
+      // Add directly enrolled subject IDs
+      userEnrolledSubjIds.forEach((id) => allowedSubjectIds.add(id));
+
+      // Find subjects belonging to enrolled courses or matching enrolledSubject IDs
+      const queryOr = [];
+      if (userEnrolledSubjIds.length > 0) {
+        queryOr.push({ _id: { $in: userEnrolledSubjIds } });
+      }
+      if (allCourseIds.length > 0) {
+        queryOr.push({ courseId: { $in: allCourseIds } });
+      }
+
+      if (queryOr.length > 0) {
+        const matchedSubjects = await Subject.find({ $or: queryOr })
+          .select('_id')
+          .lean();
+        matchedSubjects.forEach((s) => allowedSubjectIds.add(s._id.toString()));
+      }
+    }
+
     const rawMeetings = await zoomService.getRecordings();
 
     // Hide recently deleted recordings
@@ -53,6 +128,19 @@ const getRecordingsController = async (req, res) => {
               `[getRecordingsController] DB lookup failed for meeting ${rec.id}:`,
               dbError.message
             );
+          }
+
+          // If student, check if this recording belongs to an allowed subject
+          if (user.role === 'student') {
+            if (!liveClass || !liveClass.subjectId) {
+              return null;
+            }
+            const recSubjectId = liveClass.subjectId._id
+              ? liveClass.subjectId._id.toString()
+              : liveClass.subjectId.toString();
+            if (!allowedSubjectIds.has(recSubjectId)) {
+              return null;
+            }
           }
 
           // Password removal caching
