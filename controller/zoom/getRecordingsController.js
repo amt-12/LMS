@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const zoomService = require('../../services/zoomService');
 const LiveClass = require('../../models/LiveClass');
 const User = require('../../models/Auth/User');
@@ -34,8 +35,22 @@ const getRecordingsController = async (req, res) => {
     // Determine allowed subject IDs for students
     let allowedSubjectIds = null;
 
+    const normalizeString = (str) => {
+      if (!str) return '';
+      return str
+        .replace(/[\u200B-\u200D\uFEFF\u2060]/g, '')
+        .trim()
+        .toLowerCase();
+    };
+
     if (user.role === 'student') {
-      if (user.enrollment !== 'active' || user.status === 'inactive') {
+      const isInactive =
+        user.status === 'inactive' &&
+        user.enrollment !== 'active' &&
+        (!user.enrolledSubjects || user.enrolledSubjects.length === 0) &&
+        (!user.enrolledCourses || user.enrolledCourses.length === 0);
+
+      if (isInactive) {
         return res.json({
           success: true,
           count: 0,
@@ -45,41 +60,23 @@ const getRecordingsController = async (req, res) => {
 
       allowedSubjectIds = new Set();
 
-      const userEnrolledSubjIds = (user.enrolledSubjects || []).map((id) =>
-        id.toString()
-      );
+      const userEnrolledSubjIds = (user.enrolledSubjects || [])
+        .map((id) => id.toString())
+        .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
-      // PRECEDENCE RULE:
-      // If student is assigned specific subjects in enrolledSubjects, ONLY allow those subjects!
-      if (userEnrolledSubjIds.length > 0) {
-        userEnrolledSubjIds.forEach((id) => allowedSubjectIds.add(id));
+      const userEnrolledCourseIds = (user.enrolledCourses || [])
+        .map((id) => id.toString())
+        .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
-        // Also query DB for matching subject ObjectIds and titles so we match by both ID and Title
-        const queryOr = [{ _id: { $in: userEnrolledSubjIds } }];
-        queryOr.push({ title: { $in: userEnrolledSubjIds } });
-
-        const matchedSubjects = await Subject.find({ $or: queryOr })
-          .select('_id title')
-          .lean();
-
-        matchedSubjects.forEach((s) => {
-          allowedSubjectIds.add(s._id.toString());
-          if (s.title) {
-            allowedSubjectIds.add(s.title.trim().toLowerCase());
-          }
-        });
-      } else {
-        // Fallback: If NO specific enrolledSubjects assigned, allow all subjects under enrolledCourses / course name
-        const userEnrolledCourseIds = (user.enrolledCourses || []).map((id) =>
-          id.toString()
-        );
-
-        let extraCourseIds = [];
-        if (
-          user.course &&
-          typeof user.course === 'string' &&
-          user.course.trim().length > 0
-        ) {
+      let extraCourseIds = [];
+      if (
+        user.course &&
+        typeof user.course === 'string' &&
+        user.course.trim().length > 0
+      ) {
+        if (mongoose.Types.ObjectId.isValid(user.course.trim())) {
+          extraCourseIds.push(user.course.trim());
+        } else {
           const matchingCourses = await Course.find({
             title: { $regex: new RegExp(`^${user.course.trim()}$`, 'i') },
           })
@@ -87,25 +84,45 @@ const getRecordingsController = async (req, res) => {
             .lean();
           extraCourseIds = matchingCourses.map((c) => c._id.toString());
         }
+      }
 
-        const allCourseIds = [
-          ...new Set([...userEnrolledCourseIds, ...extraCourseIds]),
-        ];
+      const allCourseIds = [
+        ...new Set([...userEnrolledCourseIds, ...extraCourseIds]),
+      ];
 
-        if (allCourseIds.length > 0) {
-          const matchedSubjects = await Subject.find({
-            courseId: { $in: allCourseIds },
-          })
-            .select('_id title')
-            .lean();
+      if (userEnrolledSubjIds.length > 0) {
+        userEnrolledSubjIds.forEach((id) => allowedSubjectIds.add(id));
 
-          matchedSubjects.forEach((s) => {
-            allowedSubjectIds.add(s._id.toString());
-            if (s.title) {
-              allowedSubjectIds.add(s.title.trim().toLowerCase());
-            }
-          });
-        }
+        const matchedSubjects = await Subject.find({
+          $or: [
+            { _id: { $in: userEnrolledSubjIds } },
+            { title: { $in: user.enrolledSubjects } },
+          ],
+        })
+          .select('_id title')
+          .lean();
+
+        matchedSubjects.forEach((s) => {
+          allowedSubjectIds.add(s._id.toString());
+          if (s.title) {
+            allowedSubjectIds.add(normalizeString(s.title));
+          }
+        });
+      }
+
+      if (allCourseIds.length > 0) {
+        const courseSubjects = await Subject.find({
+          courseId: { $in: allCourseIds },
+        })
+          .select('_id title')
+          .lean();
+
+        courseSubjects.forEach((s) => {
+          allowedSubjectIds.add(s._id.toString());
+          if (s.title) {
+            allowedSubjectIds.add(normalizeString(s.title));
+          }
+        });
       }
     }
 
@@ -119,7 +136,6 @@ const getRecordingsController = async (req, res) => {
     if (!DELETED_MEETINGS) {
       global.__DELETED_ZOOM_MEETINGS__ = new Map();
     }
-
 
     // Enrich recordings with DB context + remove passcodes
     const enrichedRecordings = await Promise.all(
@@ -151,21 +167,37 @@ const getRecordingsController = async (req, res) => {
           // If student, check if this recording belongs to an allowed subject
           if (user.role === 'student') {
             if (!liveClass || !liveClass.subjectId) {
-              return null;
-            }
-            const recSubjectId = liveClass.subjectId._id
-              ? liveClass.subjectId._id.toString()
-              : liveClass.subjectId.toString();
-            const recSubjectTitle = liveClass.subjectId.title
-              ? liveClass.subjectId.title.trim().toLowerCase()
-              : (liveClass.subjectId.name ? liveClass.subjectId.name.trim().toLowerCase() : null);
+              // Fallback: match Zoom meeting topic against allowed titles
+              const topicNorm = normalizeString(rec.topic);
+              let topicMatches = false;
+              if (topicNorm) {
+                for (const allowed of allowedSubjectIds) {
+                  if (
+                    allowed.length > 3 &&
+                    (topicNorm.includes(allowed) || allowed.includes(topicNorm))
+                  ) {
+                    topicMatches = true;
+                    break;
+                  }
+                }
+              }
+              if (!topicMatches) return null;
+            } else {
+              const recSubjectId = liveClass.subjectId._id
+                ? liveClass.subjectId._id.toString()
+                : liveClass.subjectId.toString();
+              const rawTitle =
+                liveClass.subjectId.title || liveClass.subjectId.name || '';
+              const recSubjectTitleNorm = normalizeString(rawTitle);
 
-            const isAllowed =
-              allowedSubjectIds.has(recSubjectId) ||
-              (recSubjectTitle && allowedSubjectIds.has(recSubjectTitle));
+              const isAllowed =
+                allowedSubjectIds.has(recSubjectId) ||
+                (recSubjectTitleNorm &&
+                  allowedSubjectIds.has(recSubjectTitleNorm));
 
-            if (!isAllowed) {
-              return null;
+              if (!isAllowed) {
+                return null;
+              }
             }
           }
 

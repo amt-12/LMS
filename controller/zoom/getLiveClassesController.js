@@ -1,10 +1,11 @@
 const User = require('../../models/Auth/User');
 const LiveClass = require('../../models/LiveClass');
+const Subject = require('../../models/Subject');
 
 const getLiveClassesController = async (req, res) => {
   try {
     const userId = req.user.userId || req.user._id;
-    const user = await User.findById(userId).select('role enrollment enrolledCourses enrolledSubjects');
+    const user = await User.findById(userId).select('role status enrollment enrolledCourses enrolledSubjects');
     
     if (!user) {
       return res.status(401).json({
@@ -17,22 +18,29 @@ const getLiveClassesController = async (req, res) => {
     
     // For students
     if (user.role === 'student') {
-      if (user.enrollment === 'active') {
-        const Subject = require('../../models/Subject');
-        let allowedSubjectIds = [];
+      const isEnrolled =
+        user.enrollment === 'active' ||
+        user.status === 'active' ||
+        (user.enrolledSubjects && user.enrolledSubjects.length > 0) ||
+        (user.enrolledCourses && user.enrolledCourses.length > 0);
+
+      if (isEnrolled) {
+        let allowedSubjectIds = new Set();
 
         if (user.enrolledSubjects && user.enrolledSubjects.length > 0) {
-          allowedSubjectIds = [...user.enrolledSubjects];
-        } else if (user.enrolledCourses && user.enrolledCourses.length > 0) {
+          user.enrolledSubjects.forEach((id) => allowedSubjectIds.add(id.toString()));
+        }
+
+        if (user.enrolledCourses && user.enrolledCourses.length > 0) {
           const courseSubjects = await Subject.find({
             courseId: { $in: user.enrolledCourses },
           })
             .select('_id')
             .lean();
-          allowedSubjectIds = courseSubjects.map((s) => s._id);
+          courseSubjects.forEach((s) => allowedSubjectIds.add(s._id.toString()));
         }
 
-        query.subjectId = { $in: allowedSubjectIds };
+        query.subjectId = { $in: Array.from(allowedSubjectIds) };
       } else {
         // Unenrolled students see demo classes only
         query = { isDemo: true };
@@ -69,6 +77,3 @@ const getLiveClassesController = async (req, res) => {
 };
 
 module.exports = { getLiveClassesController };
-
-module.exports = { getLiveClassesController };
-
