@@ -81,69 +81,7 @@ const getRecordingsController = async (req, res) => {
         .map(extractIdString)
         .filter((id) => id && mongoose.Types.ObjectId.isValid(id));
 
-      let extraCourseIds = [];
-      if (
-        user.course &&
-        typeof user.course === 'string' &&
-        user.course.trim().length > 0
-      ) {
-        const trimmedCourse = user.course.trim();
-        if (mongoose.Types.ObjectId.isValid(trimmedCourse)) {
-          extraCourseIds.push(trimmedCourse);
-        } else {
-          const matchingCourses = await Course.find({
-            title: { $regex: new RegExp(`^${trimmedCourse}$`, 'i') },
-          })
-            .select('_id title')
-            .lean();
-
-          matchingCourses.forEach((c) => {
-            extraCourseIds.push(c._id.toString());
-            if (c.title) {
-              allowedTitles.add(normalizeString(c.title));
-            }
-          });
-        }
-      }
-
-      const allCourseIds = [
-        ...new Set([...userEnrolledCourseIds, ...extraCourseIds]),
-      ];
-
-      // Add course IDs to allowedCourseIds set
-      allCourseIds.forEach((id) => allowedCourseIds.add(id));
-
-      // Fetch titles for enrolled courses
-      if (allCourseIds.length > 0) {
-        const courseDocs = await Course.find({
-          _id: { $in: allCourseIds },
-        })
-          .select('_id title')
-          .lean();
-
-        courseDocs.forEach((c) => {
-          allowedCourseIds.add(c._id.toString());
-          if (c.title) {
-            allowedTitles.add(normalizeString(c.title));
-          }
-        });
-
-        // Find all subjects belonging to enrolled courses
-        const courseSubjects = await Subject.find({
-          courseId: { $in: allCourseIds },
-        })
-          .select('_id title courseId')
-          .lean();
-
-        courseSubjects.forEach((s) => {
-          allowedSubjectIds.add(s._id.toString());
-          if (s.title) {
-            allowedTitles.add(normalizeString(s.title));
-          }
-        });
-      }
-
-      // Handle direct enrolled subjects
+      // 1. If student has explicit assigned subjects -> restrict access strictly to assigned subjects!
       if (userEnrolledSubjIds.length > 0) {
         userEnrolledSubjIds.forEach((id) => allowedSubjectIds.add(id));
 
@@ -165,12 +103,72 @@ const getRecordingsController = async (req, res) => {
             allowedCourseIds.add(s.courseId.toString());
           }
         });
+      } else {
+        // 2. Only if student has NO explicit assigned subjects -> fall back to course-level enrollment
+        let extraCourseIds = [];
+        if (
+          user.course &&
+          typeof user.course === 'string' &&
+          user.course.trim().length > 0
+        ) {
+          const trimmedCourse = user.course.trim();
+          if (mongoose.Types.ObjectId.isValid(trimmedCourse)) {
+            extraCourseIds.push(trimmedCourse);
+          } else {
+            const matchingCourses = await Course.find({
+              title: { $regex: new RegExp(`^${trimmedCourse}$`, 'i') },
+            })
+              .select('_id title')
+              .lean();
+
+            matchingCourses.forEach((c) => {
+              extraCourseIds.push(c._id.toString());
+              if (c.title) {
+                allowedTitles.add(normalizeString(c.title));
+              }
+            });
+          }
+        }
+
+        const allCourseIds = [
+          ...new Set([...userEnrolledCourseIds, ...extraCourseIds]),
+        ];
+
+        allCourseIds.forEach((id) => allowedCourseIds.add(id));
+
+        if (allCourseIds.length > 0) {
+          const courseDocs = await Course.find({
+            _id: { $in: allCourseIds },
+          })
+            .select('_id title')
+            .lean();
+
+          courseDocs.forEach((c) => {
+            allowedCourseIds.add(c._id.toString());
+            if (c.title) {
+              allowedTitles.add(normalizeString(c.title));
+            }
+          });
+
+          const courseSubjects = await Subject.find({
+            courseId: { $in: allCourseIds },
+          })
+            .select('_id title courseId')
+            .lean();
+
+          courseSubjects.forEach((s) => {
+            allowedSubjectIds.add(s._id.toString());
+            if (s.title) {
+              allowedTitles.add(normalizeString(s.title));
+            }
+          });
+        }
       }
 
-      // IF STUDENT HAS NO ASSIGNED COURSES OR SUBJECTS -> RETURN EMPTY LIST IMMEDIATELY
+      // IF STUDENT HAS NO ASSIGNED SUBJECTS OR COURSES -> RETURN EMPTY LIST IMMEDIATELY
       if (
-        allowedCourseIds.size === 0 &&
         allowedSubjectIds.size === 0 &&
+        allowedCourseIds.size === 0 &&
         allowedTitles.size === 0
       ) {
         return res.json({
@@ -241,10 +239,9 @@ const getRecordingsController = async (req, res) => {
                 liveClass.subjectId.title || liveClass.subjectId.name || '';
               const recSubjectTitleNorm = normalizeString(rawTitle);
 
-              // 1. Check if subjectId, courseId, or subject title match assigned course/subject
+              // Check if recording's subjectId or normalized title matches allowed subjects
               if (
                 (recSubjectId && allowedSubjectIds.has(recSubjectId)) ||
-                (recCourseId && allowedCourseIds.has(recCourseId)) ||
                 (recSubjectTitleNorm &&
                   allowedTitles.has(recSubjectTitleNorm))
               ) {
@@ -257,10 +254,10 @@ const getRecordingsController = async (req, res) => {
               const topicNorm = normalizeString(rec.topic);
               if (topicNorm) {
                 for (const title of allowedTitles) {
-                  // Only match against human-readable titles (never ObjectIds!)
                   if (
                     title.length >= 3 &&
-                    (topicNorm.includes(title) || title.includes(topicNorm))
+                    (topicNorm.includes(title) ||
+                      (topicNorm.length >= 4 && title.includes(topicNorm)))
                   ) {
                     isAllowed = true;
                     break;

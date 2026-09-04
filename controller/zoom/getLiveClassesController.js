@@ -29,9 +29,7 @@ const getLiveClassesController = async (req, res) => {
 
         if (user.enrolledSubjects && user.enrolledSubjects.length > 0) {
           user.enrolledSubjects.forEach((id) => allowedSubjectIds.add(id.toString()));
-        }
-
-        if (user.enrolledCourses && user.enrolledCourses.length > 0) {
+        } else if (user.enrolledCourses && user.enrolledCourses.length > 0) {
           const courseSubjects = await Subject.find({
             courseId: { $in: user.enrolledCourses },
           })
