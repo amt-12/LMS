@@ -7,7 +7,7 @@ const getSubjects = async (req, res) => {
     //   return res.status(403).json({ error: 'Admin access only' });
     // }
 
-    const { courseId, search, page = 1, limit = 10 } = req.query;
+    const { courseId, search, page, limit } = req.query;
     let query = {};
 
     if (courseId) {
@@ -18,15 +18,20 @@ const getSubjects = async (req, res) => {
       query.title = { $regex: search, $options: 'i' };
     }
 
-    const subjects = await Subject.find(query)
+    let subjectsQuery = Subject.find(query)
       .populate('courseId', 'title')
       .select('title courseId createdAt')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
+      .sort({ createdAt: -1 });
 
     const total = await Subject.countDocuments(query);
+    const limitNum = limit !== undefined ? parseInt(limit) : 0;
+    const pageNum = page ? parseInt(page) : 1;
+
+    if (limitNum > 0) {
+      subjectsQuery = subjectsQuery.limit(limitNum).skip((pageNum - 1) * limitNum);
+    }
+
+    const subjects = await subjectsQuery.lean();
 
     // Format for frontend
     const subjectList = subjects.map(subject => ({
@@ -40,7 +45,12 @@ const getSubjects = async (req, res) => {
 
     res.json({
       subjects: subjectList,
-      pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) }
+      pagination: {
+        page: pageNum,
+        limit: limitNum || total,
+        total,
+        pages: limitNum > 0 ? Math.ceil(total / limitNum) : 1
+      }
     });
   } catch (error) {
     console.error('Get subjects error:', error);

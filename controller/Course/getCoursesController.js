@@ -7,21 +7,26 @@ const getCourses = async (req, res) => {
     //   return res.status(403).json({ error: 'Admin access only' });
     // }
 
-    const { search, status, page = 1, limit = 10 } = req.query;
+    const { search, status, page, limit } = req.query;
     const query = { status: status || { $ne: null } };
 
     if (search) {
       query.$text = { $search: search };
     }
 
-    const courses = await Course.find(query)
+    let coursesQuery = Course.find(query)
       .select('title description status imageUrl createdAt')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
+      .sort({ createdAt: -1 });
 
     const total = await Course.countDocuments(query);
+    const limitNum = limit !== undefined ? parseInt(limit) : 0;
+    const pageNum = page ? parseInt(page) : 1;
+
+    if (limitNum > 0) {
+      coursesQuery = coursesQuery.limit(limitNum).skip((pageNum - 1) * limitNum);
+    }
+
+    const courses = await coursesQuery.lean();
 
     // Format for frontend (like Students)
     const courseList = courses.map(course => ({
@@ -35,7 +40,12 @@ const getCourses = async (req, res) => {
 
     res.json({
       courses: courseList,
-      pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) }
+      pagination: {
+        page: pageNum,
+        limit: limitNum || total,
+        total,
+        pages: limitNum > 0 ? Math.ceil(total / limitNum) : 1
+      }
     });
   } catch (error) {
     console.error('Get courses error:', error);
