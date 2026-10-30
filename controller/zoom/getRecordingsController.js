@@ -365,10 +365,11 @@ const getRecordingsController = async (req, res) => {
 
               for (const start of sortedStarts) {
                 const segmentFiles = segments[start];
-                // Prefer shared_screen_with_speaker_view
-                let bestFile = segmentFiles.find((f) => f.recording_type === 'shared_screen_with_speaker_view');
+                // Prioritize speaker_view first for native camera recordings (avoids VFR screen compositor freeze)
+                let bestFile = segmentFiles.find((f) => f.recording_type === 'speaker_view');
+                if (!bestFile) bestFile = segmentFiles.find((f) => f.recording_type === 'shared_screen_with_speaker_view');
                 if (!bestFile) bestFile = segmentFiles.find((f) => f.recording_type === 'shared_screen_with_gallery_view');
-                if (!bestFile) bestFile = segmentFiles.find((f) => f.recording_type === 'speaker_view');
+                if (!bestFile) bestFile = segmentFiles.find((f) => f.recording_type === 'gallery_view');
                 if (!bestFile) bestFile = segmentFiles[0];
 
                 const pl = { ...basePayload };

@@ -60,8 +60,8 @@ class ZoomService {
           mute_upon_entry: true,
           password: this.generatePassword(),
           auto_recording: 'none',
-          hd_video: false,          // disable HD to reduce latency on mobile WebViews
-          audio: 'voip',            // force VoIP audio only for simpler audio streams
+          hd_video: true,
+          audio: 'both',
         },
       }, {
         headers: {
@@ -197,8 +197,8 @@ class ZoomService {
         timezone: 'UTC',
         settings: {
           auto_recording: 'none',
-          hd_video: false,
-          audio: 'voip',
+          hd_video: true,
+          audio: 'both',
           participant_video: false, // Enforce disabled participant video on updates for WebView scaling stability
           mute_upon_entry: true     // Enforce mute on entry to prevent audio echo cascades
         }
@@ -369,8 +369,8 @@ class ZoomService {
         settings: {
           password: password,
           auto_recording: 'none',
-          hd_video: false,
-          audio: 'voip',
+          hd_video: true,
+          audio: 'both',
           participant_video: false, // Enforce scaling stability settings
           mute_upon_entry: true
         }

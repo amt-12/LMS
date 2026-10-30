@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const zoomService = require('../../services/zoomService');
 const User = require('../../models/Auth/User');
@@ -20,6 +22,23 @@ const recordingProxyController = async (req, res) => {
 
     if (!video_url) {
       return res.status(400).json({ success: false, message: 'video_url query param required' });
+    }
+
+    // Specific re-sync override ONLY for HSA Lecture-6 (Oct 28, 2026 06:04 PM)
+    const FIXED_RECORDING_MAP = {
+      '9yOihXeu89KbI7pwvJhaD23SXkuOwuiGXidS1NxHM4Nkg4q2Pum-NV7kj78WOz0_vc6zuIe7iHirw0k': path.join(__dirname, '../../fixed_recordings/fixed_hsa_lecture_6.mp4'),
+    };
+
+    for (const [tokenPart, localPath] of Object.entries(FIXED_RECORDING_MAP)) {
+      if (video_url.includes(tokenPart) && fs.existsSync(localPath)) {
+        console.log(`[Proxy] Serving locally re-synced CFR video for HSA Lecture-6: ${localPath}`);
+        return res.sendFile(path.resolve(localPath), {
+          acceptRanges: true,
+          headers: {
+            'Content-Type': 'video/mp4',
+          },
+        });
+      }
     }
 
     // Get a fresh Zoom OAuth access token
