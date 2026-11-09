@@ -24,15 +24,27 @@ const recordingProxyController = async (req, res) => {
       return res.status(400).json({ success: false, message: 'video_url query param required' });
     }
 
-    // Specific re-sync override ONLY for HSA Lecture-6 (Oct 28, 2026 06:04 PM)
-    const FIXED_RECORDING_MAP = {
-      '9yOihXeu89KbI7pwvJhaD23SXkuOwuiGXidS1NxHM4Nkg4q2Pum-NV7kj78WOz0_vc6zuIe7iHirw0k': path.join(__dirname, '../../fixed_recordings/fixed_hsa_lecture_6.mp4'),
+    // Check for locally re-synced CFR recordings
+    const fixedRecordingsDir = path.join(__dirname, '../../fixed_recordings');
+    const mapFilePath = path.join(fixedRecordingsDir, 'map.json');
+    let fixedMap = {
+      '9yOihXeu89KbI7pwvJhaD23SXkuOwuiGXidS1NxHM4Nkg4q2Pum-NV7kj78WOz0_vc6zuIe7iHirw0k': path.join(fixedRecordingsDir, 'fixed_hsa_lecture_6.mp4'),
     };
 
-    for (const [tokenPart, localPath] of Object.entries(FIXED_RECORDING_MAP)) {
-      if (video_url.includes(tokenPart) && fs.existsSync(localPath)) {
-        console.log(`[Proxy] Serving locally re-synced CFR video for HSA Lecture-6: ${localPath}`);
-        return res.sendFile(path.resolve(localPath), {
+    if (fs.existsSync(mapFilePath)) {
+      try {
+        const customMap = JSON.parse(fs.readFileSync(mapFilePath, 'utf8'));
+        fixedMap = { ...fixedMap, ...customMap };
+      } catch (err) {
+        console.warn('[Proxy] Failed to parse fixed_recordings/map.json:', err.message);
+      }
+    }
+
+    for (const [keyIdentifier, filePath] of Object.entries(fixedMap)) {
+      const resolvedPath = path.isAbsolute(filePath) ? filePath : path.join(fixedRecordingsDir, filePath);
+      if (video_url.includes(keyIdentifier) && fs.existsSync(resolvedPath)) {
+        console.log(`[Proxy] Serving locally re-synced CFR video for key [${keyIdentifier}]: ${resolvedPath}`);
+        return res.sendFile(path.resolve(resolvedPath), {
           acceptRanges: true,
           headers: {
             'Content-Type': 'video/mp4',
@@ -78,7 +90,7 @@ const recordingProxyController = async (req, res) => {
 
       // Follow redirects manually to find the final S3/CDN URL
       if (zoomRes.status >= 300 && zoomRes.status < 400 && zoomRes.headers.location) {
-        currentUrl = zoomRes.headers.location;
+        currentUrl = new URL(zoomRes.headers.location, currentUrl).href;
         redirects++;
         zoomRes.data.destroy();
         continue;

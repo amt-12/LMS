@@ -61,7 +61,7 @@ class ZoomService {
           password: this.generatePassword(),
           auto_recording: 'none',
           hd_video: true,
-          audio: 'both',
+          audio: 'voip', // VoIP only avoids telephone audio mixer resampling drift on long recordings
         },
       }, {
         headers: {
@@ -198,7 +198,7 @@ class ZoomService {
         settings: {
           auto_recording: 'none',
           hd_video: true,
-          audio: 'both',
+          audio: 'voip', // VoIP only avoids telephone audio mixer resampling drift on long recordings
           participant_video: false, // Enforce disabled participant video on updates for WebView scaling stability
           mute_upon_entry: true     // Enforce mute on entry to prevent audio echo cascades
         }
@@ -370,7 +370,7 @@ class ZoomService {
           password: password,
           auto_recording: 'none',
           hd_video: true,
-          audio: 'both',
+          audio: 'voip', // VoIP only avoids telephone audio mixer resampling drift on long recordings
           participant_video: false, // Enforce scaling stability settings
           mute_upon_entry: true
         }
